@@ -1,6 +1,10 @@
 git init
 git add .
-git commit -m "Primeiro commit do projeto"
+git commit -m "teste"
 git remote add origin https://github.com/leoborin/Panel_Waysides.git
 git push -u origin master
 git push -u origin main
+
+venv\Scripts\activate
+
+ streamlit run app.py
