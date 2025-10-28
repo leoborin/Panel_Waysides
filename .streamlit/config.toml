@@ -1,0 +1,10 @@
+[theme]
+base="light"                  # "light" ou "dark"
+primaryColor="#0052CC"        # cor principal (botões, sliders)
+backgroundColor="#FFFFFF"
+secondaryBackgroundColor="#F4F6F8"
+textColor="#1A1A1A"
+font="sans serif"             # "sans serif", "serif", "monospace"
+
+[browser]
+gatherUsageStats = false
