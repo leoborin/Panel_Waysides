@@ -206,7 +206,7 @@ with aba4:  # Chat Bot
     import pandas as pd
     import io
     # https://35.212.252.12/
-    WEBHOOK_URL = "http://35.212.252.12/webhook-test/chatbot"
+    WEBHOOK_URL = "http://35.212.252.12/webhook/chatbot"
 
     def send_message_to_webhook(message):
         payload = {"message": message}
