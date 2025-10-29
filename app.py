@@ -69,7 +69,7 @@ def get_latest_documents():
 
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
-st.title("Consulta MongoDB via Streamlit v3")
+st.title("Consulta MongoDB via Streamlit v54")
 
 # Cria abas na parte superior
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs(
