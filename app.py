@@ -69,7 +69,7 @@ def get_latest_documents():
 
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
-st.title("Consulta MongoDB via Streamlit v54")
+st.title("Consulta MongoDB via Streamlit v55")
 
 # Cria abas na parte superior
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs(
@@ -139,7 +139,7 @@ with aba2:
 
 with aba3:
 
-    # st.sidebar.markdown("### Portal de BI")
+    st.sidebar.markdown("### Portal de BI")
 
     # st.header("Ficha Vagão")
     st.title("Ficha Vagão - Prognósticos Integrado de Vagões")
@@ -205,60 +205,206 @@ with aba4:  # Chat Bot
     import requests
     import pandas as pd
     import io
-    # https://35.212.252.12/
+    import json
+    import re
+    from datetime import datetime
+
     WEBHOOK_URL = "http://35.212.252.12/webhook/chatbot"
 
-    def send_message_to_webhook(message):
+    # -----------------------------
+    # 1) Envio ao Webhook
+    # -----------------------------
+    def send_message_to_webhook(message: str) -> str:
         payload = {"message": message}
         try:
-            # Timeout de 30 segundos
-            response = requests.post(WEBHOOK_URL, json=payload, timeout=30)
-
+            response = requests.post(WEBHOOK_URL, json=payload, timeout=60)
             if response.status_code == 200:
                 return response.text
             else:
                 return f"Erro: resposta do servidor {response.status_code}"
         except requests.exceptions.Timeout:
-            return "⏱️ Tempo limite excedido: o servidor demorou mais de 30 segundos para responder."
+            return "⏱️ Tempo limite excedido: o servidor demorou mais de 60 segundos para responder."
         except Exception as e:
             return f"Erro ao conectar: {str(e)}"
 
-    def try_parse_table(text):
+    # -----------------------------
+    # 2) Utilidades para parsing
+    # -----------------------------
+    def _extract_json_block(text: str):
         """
-        Tenta converter um texto tabular em DataFrame (usando tabulação, vírgula ou pipe).
-        Retorna um DataFrame se conseguir, senão None.
+        Procura por blocos ```json ... ``` ou ``` ... ``` e retorna o conteúdo.
+        """
+        m = re.search(r"```json\s*(.*?)```", text,
+                      flags=re.DOTALL | re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+        m = re.search(r"```\s*(\{.*?\}|\[.*?\])\s*```", text, flags=re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        return None
+
+    def _safe_json_loads(text: str):
+        """
+        Tenta json.loads no texto completo, depois em bloco ```json```, depois no primeiro trecho {...} ou [...].
+        Retorna (obj, fonte) ou (None, None).
         """
         try:
-            if "\t" in text:
-                df = pd.read_csv(io.StringIO(text), sep="\t")
-            elif "|" in text:
-                df = pd.read_csv(io.StringIO(text), sep="|")
-            elif "," in text:
-                df = pd.read_csv(io.StringIO(text), sep=",")
-            else:
-                return None
-
-            df = df.dropna(how="all", axis=1)
-            df.columns = [col.strip() for col in df.columns]
-            return df
+            return json.loads(text), 'full'
         except Exception:
-            return None
+            pass
+        block = _extract_json_block(text)
+        if block:
+            try:
+                return json.loads(block), 'block'
+            except Exception:
+                pass
+        m = re.search(r"(\{.*\}|\[.*\])", text, flags=re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(1)), 'snippet'
+            except Exception:
+                pass
+        return None, None
 
-    # -------------------- Interface --------------------
-    st.title("💬 Chatbot com Webhook e Tabelas")
+    def _possible_markdown_table(text: str) -> bool:
+        """
+        Heurística para detectar tabela Markdown com linha separadora ---.
+        """
+        has_pipes = '|' in text
+        has_sep_row = re.search(
+            r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$',
+            text, flags=re.MULTILINE
+        ) is not None
+        return has_pipes and has_sep_row
 
-    user_input = st.text_input("Digite sua mensagem:")
+    def try_parse_table(text: str):
+        """
+        Tenta converter a resposta em DataFrame.
+        Suporta: JSON (lista/dict), bloco ```json```, Markdown table, TSV, pipe, CSV.
+        """
+        # JSON
+        obj, source = _safe_json_loads(text)
+        if obj is not None:
+            if isinstance(obj, list) and (len(obj) == 0 or isinstance(obj[0], dict)):
+                return pd.DataFrame(obj)
+            if isinstance(obj, dict):
+                for key in ['data', 'items', 'result', 'rows']:
+                    if key in obj and isinstance(obj[key], list) and (len(obj[key]) == 0 or isinstance(obj[key][0], dict)):
+                        return pd.DataFrame(obj[key])
+                return pd.DataFrame([obj])
 
-    if st.button("Enviar") and user_input:
-        reply = send_message_to_webhook(user_input)
+        # Markdown
+        if _possible_markdown_table(text):
+            lines = [ln.strip()
+                     for ln in text.strip().splitlines() if ln.strip()]
+            table_lines = [ln for ln in lines if '|' in ln]
+            if table_lines:
+                cleaned = "\n".join(
+                    [re.sub(r'^\||\|$', '', ln).strip() for ln in table_lines])
+                try:
+                    df = pd.read_csv(io.StringIO(cleaned), sep='|')
+                    # remove linha separadora (---)
+                    df = df[[not re.fullmatch(
+                        r'\s*:?-{3,}:?\s*', str(x)) for x in df.iloc[:, 0]]]
+                    return df.reset_index(drop=True)
+                except Exception:
+                    pass
 
-        df = try_parse_table(reply)
+        # TSV / Pipe / CSV (nessa ordem)
+        for sep in ['\t', '|', ',']:
+            if sep in text:
+                try:
+                    df = pd.read_csv(io.StringIO(text), sep=sep)
+                    if df.shape[1] > 1:
+                        return df
+                except Exception:
+                    pass
 
-        if df is not None and not df.empty:
-            st.success("📋 Tabela detectada na resposta:")
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.text_area("Resposta do chatbot", value=reply, height=200)
+        return None
+
+    def _format_date_columns(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Converte colunas com 'dt' ou 'data' no nome para dd/mm/yyyy.
+        """
+        out = df.copy()
+        for col in out.columns:
+            low = str(col).lower()
+            if 'dt' in low or 'data' in low:
+                try:
+                    series = pd.to_datetime(
+                        out[col], errors='coerce', utc=True)
+                    series = series.dt.tz_localize(
+                        None).dt.strftime('%d/%m/%Y')
+                    out[col] = series.fillna(out[col])
+                except Exception:
+                    pass
+        return out
+
+    def _reorder_cols(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Reordena colunas para um padrão conhecido, se existirem.
+        """
+        preferred = [
+            'NOTA', 'ATIVO', 'TP NOTA', 'STATUS', 'STATUS_traduzido', 'classificacao_nota',
+            'TEXTO', 'TEXTO AVARIA', 'TEXTO CAUSA',
+            'dt_abertura_trated', 'dt_fechamento_trated'
+        ]
+        cols = [c for c in preferred if c in df.columns] + \
+            [c for c in df.columns if c not in preferred]
+        return df[cols]
+
+    def _remove_json_from_text(text: str) -> str:
+        """
+        Remove blocos ```...``` e objetos/arrays JSON inline da parte textual exibida.
+        (Não afeta o parsing da tabela, que usa o texto original.)
+        """
+        # Remove blocos de código
+        no_code = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+        # Remove objetos/arrays JSON inline (heurística ampla)
+        no_json = re.sub(r"\[[\s\S]*\]|\{[\s\S]*\}", "", no_code).strip()
+        # Colapsa quebras de linha longas
+        no_json = re.sub(r"\n{3,}", "\n\n", no_json)
+        return no_json
+
+    # -----------------------------
+    # 3) UI do chat + renderização
+    # -----------------------------
+    st.subheader("🤖 VAGO - ChatBot Vagões")
+
+    user_msg = st.chat_input("Digite sua mensagem e pressione Enter")
+
+    if user_msg:
+        with st.chat_message("user"):
+            st.write(user_msg)
+
+        # Spinner de carregamento + mensagem final "dados carregados"
+        with st.chat_message("assistant"):
+            placeholder = st.empty()  # cria área para trocar mensagem
+            with st.spinner("⏳ Aguardando resposta do servidor..."):
+                response_text = send_message_to_webhook(user_msg)
+
+            # após o término do spinner
+            placeholder.success("✅ Dados carregados com sucesso!")
+
+        # Processa resposta
+        df = try_parse_table(response_text)
+        texto_sem_json = _remove_json_from_text(response_text)
+
+        with st.chat_message("assistant"):
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                # Texto explicativo (sem JSON) acima da tabela
+                if texto_sem_json:
+                    st.markdown(texto_sem_json)
+
+                # Formata e exibe tabela
+                df = _format_date_columns(df)
+                df = _reorder_cols(df)
+                st.dataframe(df, use_container_width=True)
+
+            else:
+                # Quando não há tabela, mostra apenas texto (sem JSON)
+                st.markdown(
+                    texto_sem_json if texto_sem_json else response_text)
 
 
 with aba6:  # Teste de Componentes do STREAMLIT
