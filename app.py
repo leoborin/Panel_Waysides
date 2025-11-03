@@ -209,7 +209,7 @@ with aba4:  # Chat Bot
     import re
     from datetime import datetime
 
-    WEBHOOK_URL = "http://35.212.133.206/webhook/chatbot"
+    WEBHOOK_URL = "http://35.185.213.101/webhook/chatbot"
 
     # -----------------------------
     # 1) Envio ao Webhook
