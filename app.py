@@ -619,13 +619,13 @@ with aba4:  # Chat Bot
     def send_message_to_webhook(message: str) -> str:
         payload = {"message": message}
         try:
-            response = requests.post(WEBHOOK_URL, json=payload, timeout=60)
+            response = requests.post(WEBHOOK_URL, json=payload, timeout=99)
             if response.status_code == 200:
                 return response.text
             else:
                 return f"Erro: resposta do servidor {response.status_code}"
         except requests.exceptions.Timeout:
-            return "⏱️ Tempo limite excedido: o servidor demorou mais de 60 segundos para responder."
+            return "⏱️ Tempo limite excedido: o servidor demorou mais de 90 segundos para responder."
         except Exception as e:
             return f"Erro ao conectar: {str(e)}"
 
