@@ -619,7 +619,7 @@ with aba4:  # Chat Bot
     def send_message_to_webhook(message: str) -> str:
         payload = {"message": message}
         try:
-            response = requests.post(WEBHOOK_URL, json=payload, timeout=99)
+            response = requests.post(WEBHOOK_URL, json=payload, timeout=200)
             if response.status_code == 200:
                 return response.text
             else:
