@@ -2,9 +2,11 @@ git init
 git add .
 git commit -m "teste"
 git remote add origin https://github.com/leoborin/Panel_Waysides.git
-git push -u origin master
+
 git push -u origin main
+git push --force origin master
 
 venv\Scripts\activate
 
  streamlit run app.py
+ scikit-learn==1.7.1

@@ -689,59 +689,168 @@ with aba2:
 
  #       def regrecao():
 # -------------------------------------------------------------------Regressão
-        from sklearn.linear_model import LinearRegression
-        from sklearn.metrics import mean_squared_error, mean_absolute_error
-        from sklearn.metrics import root_mean_squared_error
+        # from sklearn.linear_model import LinearRegression
+        # from sklearn.metrics import mean_squared_error, mean_absolute_error
+        # from sklearn.metrics import root_mean_squared_error
+        # import pandas as pd
+        # import plotly.graph_objects as go
+
+        # # == == == == == == == == == == == == =
+        # # 1. Garantir que Data é datetime
+        # # == == == == == == == == == == == == =
+        # df_trkv_trated["Data"] = pd.to_datetime(
+        #     df_trkv_trated["Data"], errors="coerce")
+
+        # # Remover linhas sem Data ou sem valores
+        # df_trkv_trated = df_trkv_trated.dropna(
+        #     subset=["Data", "TRKV_MAX_Cunha"])
+
+        # # Ordenar por data (importante!)
+        # df_trkv_trated = df_trkv_trated.sort_values("Data")
+
+        # # =========================
+        # # 2. Regressão Linear
+        # # =========================
+        # X = df_trkv_trated["Data"].map(
+        #     pd.Timestamp.toordinal).values.reshape(-1, 1)
+        # y = df_trkv_trated["TRKV_MAX_Cunha"].values
+
+        # model = LinearRegression()
+        # model.fit(X, y)
+
+        # slope = model.coef_[0]
+        # intercept = model.intercept_
+        # # Predição
+        # y_pred = model.predict(X)
+        # # ====== MÉTRICAS ======
+        # r2 = model.score(X, y)
+        # rmse = root_mean_squared_error(y, y_pred)
+        # mae = mean_absolute_error(y, y_pred)
+
+        # print(f"R²:   {r2:.4f}")
+        # print(f"MAE:  {mae:.4f}")
+        # print(f"RMSE: {rmse:.4f}")
+
+        # print(f"Coeficiente angular (slope): {slope:.4f}")
+
+        import numpy as np
         import pandas as pd
-        import plotly.graph_objects as go
+        from math import sqrt
 
-        # =========================
-        # 1. Garantir que Data é datetime
-        # =========================
-        df_trkv_trated["Data"] = pd.to_datetime(
-            df_trkv_trated["Data"], errors="coerce")
+        def projetar_regressao(df, slope, intercept, dias_a_frente=30):
+            # Converte datas para inteiro ordinal
+            x = pd.to_datetime(df["Data"], errors="coerce").map(
+                pd.Timestamp.toordinal).values
+            x = x[~np.isnan(x)]  # remove valores inválidos
 
-        # Remover linhas sem Data ou sem valores
-        df_trkv_trated = df_trkv_trated.dropna(
-            subset=["Data", "TRKV_MAX_Cunha"])
+            ultimo_x = x[-1]
 
-        # Ordenar por data (importante!)
-        df_trkv_trated = df_trkv_trated.sort_values("Data")
+            # Cria novos pontos no futuro
+            novos_x = np.array(
+                [ultimo_x + i for i in range(1, dias_a_frente + 1)])
 
-        # =========================
-        # 2. Regressão Linear
-        # =========================
-        X = df_trkv_trated["Data"].map(
-            pd.Timestamp.toordinal).values.reshape(-1, 1)
-        y = df_trkv_trated["TRKV_MAX_Cunha"].values
+            # Converte de volta para datas
+            novas_datas = [pd.Timestamp.fromordinal(int(v)) for v in novos_x]
 
-        model = LinearRegression()
-        model.fit(X, y)
+            # Predição futura
+            novos_y_pred = slope * novos_x + intercept
 
-        slope = model.coef_[0]
-        intercept = model.intercept_
-        # Predição
-        y_pred = model.predict(X)
-        # ====== MÉTRICAS ======
-        r2 = model.score(X, y)
-        rmse = root_mean_squared_error(y, y_pred)
-        mae = mean_absolute_error(y, y_pred)
+            # Retorna um dataframe organizado
+            return pd.DataFrame({
+                "Data": novas_datas,
+                "y_pred": novos_y_pred
+            })
 
-        print(f"R²:   {r2:.4f}")
-        print(f"MAE:  {mae:.4f}")
-        print(f"RMSE: {rmse:.4f}")
+        def regressao_linear_manual(df, col_x="Data", col_y="TRKV_MAX_Cunha"):
+            # ============================
+            # 1) Preparar dados
+            # ============================
+            x_all = pd.to_datetime(df[col_x], errors="coerce").map(
+                pd.Timestamp.toordinal).values
+            y_all = df[col_y].values
 
-        print(f"Coeficiente angular (slope): {slope:.4f}")
+            # Máscara para limpar NaN
+            mask = ~np.isnan(x_all) & ~np.isnan(y_all)
+            x = x_all[mask]
+            y = y_all[mask]
+
+            n = len(x)
+
+            # ============================
+            # 2) Somatórios
+            # ============================
+            sum_x = np.sum(x)
+            sum_y = np.sum(y)
+            sum_xy = np.sum(x * y)
+            sum_x2 = np.sum(x * x)
+
+            # ============================
+            # 3) Cálculo dos parâmetros
+            # ============================
+            slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
+            intercept = (sum_y - slope * sum_x) / n
+
+            # ============================
+            # 4) Predições
+            # ============================
+            # y_pred → somente dados válidos (para cálculo das métricas)
+            y_pred = slope * x + intercept
+
+            # y_pred_full → predição para TODAS as linhas originais
+            y_pred_full = slope * x_all + intercept
+
+            # ============================
+            # 5) Métricas
+            # ============================
+            rmse = sqrt(np.mean((y - y_pred)**2))
+            mae = np.mean(np.abs(y - y_pred))
+            ss_res = np.sum((y - y_pred)**2)
+            ss_tot = np.sum((y - np.mean(y))**2)
+            r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0
+
+            # ============================
+            # 6) Retorno
+            # ============================
+            return {
+                "slope": slope,
+                "intercept": intercept,
+                "rmse": rmse,
+                "mae": mae,
+                "r2": r2,
+                "y_pred": y_pred,            # somente dados válidos
+                "y_pred_full": y_pred_full   # TODAS as linhas (para plot)
+            }
+
+        resultado = regressao_linear_manual(df_trkv_trated)
+
+        slope = resultado["slope"]
+        intercept = resultado["intercept"]
+        r2 = resultado["r2"]
+        rmse = resultado["rmse"]
+        mae = resultado["mae"]
+        y_pred = resultado["y_pred_full"]
+
+        df_projecao = projetar_regressao(
+            df_trkv_trated, slope, intercept, dias_a_frente=30)
+
+        print(f"Slope: {slope}")
+        print(f"Intercept: {intercept}")
+        print(f"R²: {r2}")
+        print(f"RMSE: {rmse}")
+        print(f"MAE: {mae}")
+
+
 # -------------------------------------------------------------------Regressão
         # df_trkv_trated, r2, mae, rmse = regrecao()
 
+
         def plot_Waysides():
-            # =========================
-            # 3. Gráfico TRKV + Regressão
-            # =========================
+
             fig_trkv = go.Figure()
 
-            # --- SÉRIE REAL ---
+            # -------------------------
+            # 1. Série real
+            # -------------------------
             fig_trkv.add_trace(go.Scatter(
                 x=df_trkv_trated["Data"],
                 y=df_trkv_trated["TRKV_MAX_Cunha"],
@@ -753,7 +862,9 @@ with aba2:
                 line=dict(width=2)
             ))
 
-            # --- LINHA DE REGRESSÃO ---
+            # -------------------------
+            # 2. Linha de regressão real
+            # -------------------------
             fig_trkv.add_trace(go.Scatter(
                 x=df_trkv_trated["Data"],
                 y=y_pred,
@@ -762,15 +873,27 @@ with aba2:
                 name=f"Regressão Linear (slope={slope:.4f})"
             ))
 
+            # -------------------------
+            # 3. PROJEÇÃO FUTURA
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_projecao["Data"],
+                y=df_projecao["y_pred"],
+                mode="lines",
+                line=dict(width=2, dash="dot", color="#FF5733"),
+                name="Projeção Futura (+30 dias)"
+            ))
+
+            # Layout
             fig_trkv.update_layout(
-                title="TRKV - com Regressão Linear",
+                title="TRKV - Regressão + Projeção Futura",
                 xaxis_title="Data",
                 yaxis_title="Valor",
                 template="plotly_white",
-                height=380
+                height=380,
             )
 
-            # Ajuste do range do eixo Y
+            # Range eixo Y
             fig_trkv.update_yaxes(range=[10, 70])
 
             # =========================
