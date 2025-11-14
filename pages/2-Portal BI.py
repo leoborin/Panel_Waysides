@@ -12,81 +12,62 @@ COLLECTION_NAME = "z369_full"
 
 st.set_page_config(layout="wide")
 
-#-------------------------------------------------------------------------------------
-#Importar DADOS
-@st.cache_data(ttl=600)
-def function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, COLLECTION_NAME):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-    pipeline = [
-    {
-        '$project': {
-            'DESC STATUS': 1, 
-            'dt_abertura_trated': 1
-        }
-    }
-]
+st.sidebar.markdown("### Portal de BI")
 
-    # Buscar últimos documentos ordenados por timestamp decrescente
-    docs = collection.aggregate(pipeline)#.find().sort("dt_abertura_trated", -1).limit(lines)
-    #print(docs)
+# # st.header("Ficha Vagão")
+# st.title("Ficha Vagão - Prognósticos Integrado de Vagões")
+# st.write("Testes de desenvolvimento de BI para Vagões")
+# df_Z369 = function_to_get_data_from_z369(MONGO_URI, DB_NAME, "z369_full")
+# df_Z369_1 = function_to_get_data_from_z369(MONGO_URI, DB_NAME, "z369_full")
+# # teste = df_Z369['data_sincronizacao'].drop_duplicates()
+# # st.write(teste)
+# # contagem_mensal = df_Z369['data_sincronizacao'].dt.to_period('M').value_counts().sort_index()
+# df_Z369_1['mes'] = df_Z369_1['data_sincronizacao'].dt.to_period('M')
+# # st.write(df_Z369_1.groupby('DESC STATUS').size())
+# # st.write(df_Z369_1.groupby('mes').size())
 
-    if docs:
-        # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
-        if 'json_documents' in df.columns:
-            df['json_documents'] = df['json_documents'].fillna('').astype(str)
-        return df
-    else:
-        return pd.DataFrame()  # DataFrame vazio
+# contagens = (pd.crosstab(df_Z369_1['mes'], df_Z369_1['DESC STATUS'])   # linhas=mes, colunas=status
+#              .reindex(columns=['Mensagem encerrada', 'Mensagem pendente', 'Mensagem em processamento'], fill_value=0)
+#              .sort_index())
+# # st.write(contagens)
+# # 3st.dataframe(df_Z369_1)
+# # qtd_por_mes =
 
-#-----------------------------------------------------------------------------------------
-    
-st.title("Gestão de Ativos - Vagões")
-#Importando para dataframe
-df= function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, "z369_full")
-#Criando coluna mes
-#df['mes'] = df['dt_abertura_trated'].dt.to_period('M')
-df["mes"] = pd.to_datetime(df["dt_abertura_trated"], format="%Y-%m")
-df = df.sort_values("mes")
-df['mes'] = df['mes'].dt.to_period('M')
-df['mes'] = df['mes'].dt.to_timestamp()
-df2 = df
-#Modelando tabela para calculo
-#df['lag_1'] = df['DESC STATUS'].shift(1)
-#df['lag_2'] = df['mes'].shift(1)
+# cont1 = df_Z369['DESC STATUS'].value_counts()
+# col5, col6, col7 = st.columns(3)
+# with col5:
+#     col5 = st.metric(label='Total de Notas fechadas',
+#                      value=cont1['Mensagem encerrada'], delta='10%')
+# with col6:
+#     col6 = st.metric(label='Total de Notas pendentes',
+#                      value=cont1['Mensagem pendente'], delta='30%')
+# with col7:
+#     col7 = st.metric(label='Total de Notas em processamento',
+#                      value=cont1['Mensagem em processamento'], delta='-25%')
 
-#df2 = df.groupby(['mes','DESC STATUS','dt_abertura_trated'])['DESC STATUS'].count()
-df2 = df2.groupby(['mes', 'DESC STATUS'],as_index=False)['DESC STATUS'].value_counts()
-#df2 = df2.groupby('mes')['DESC STATUS'].count()
-#df2 = df2.groupby('DESC STATUS')['mes'].count()
-#df2 = df2['DESC STATUS'].value_counts()
+# st.date_input(label='Data de Atualização', value='today', disabled=True)
 
-data = {
-    'Produto': ['A', 'B', 'A', 'B', 'A'],
-    'Quantidade': [10, 20, 15, 25, 10],
-    'Receita': [100, 200, 150, 250, 100]
-}
-df3 = pd.DataFrame(data)
+# vagao_input = st.text_input('Escreva um vagão')
+# filtro_vagao = df_Z369['ATIVO'] == vagao_input
+# st.dataframe(df_Z369[filtro_vagao])
 
-st.dataframe(df)
-st.dataframe(df2)
-st.dataframe(df3)
-total_quantidade_por_produto = df3.groupby('Produto')['Quantidade'].sum()
-st.dataframe(total_quantidade_por_produto)
-df2 = df2[df2['DESC STATUS'] == 'Mensagem pendente']
-df4 = df2[df2['DESC STATUS'] == 'Mensagem encerrada']
-st.bar_chart(df2, x='mes', y='count', color='DESC STATUS',stack=False)
-st.bar_chart(df4, x='mes', y='count', color='DESC STATUS',stack=False)
-st.line_chart(df2, x='mes', y='count', color='DESC STATUS')
-st.bar_chart(df2, y='count')
-st.bar_chart(df2, y='DESC STATUS')
+# col1, col2, col3 = st.columns(3)
+# with col1:
+#     col1 = st.selectbox('Selecione um Local', sorted(
+#         df_Z369['Local'].drop_duplicates()))
+#     filtro1 = df_Z369["Local"] == col1
+#     df_Z369 = df_Z369[filtro1]
+# with col2:
+#     col2 = st.selectbox('Selecione um Estado',
+#                         df_Z369['DESC STATUS'].drop_duplicates())
+#     filtro2 = df_Z369["DESC STATUS"] == col2
+#     df_Z369 = df_Z369[filtro2]
+# with col3:
+#     col3 = st.selectbox('Selecione uma Nota', sorted(
+#         df_Z369['TP NOTA'].drop_duplicates()))
+#     filtro3 = df_Z369["TP NOTA"] == col3
+#     df_Z369 = df_Z369[filtro3]
 
-# Gráfico interativo
-#fig = px.bar(df2, x="mes", y="count", color="DESC STATUS", barmode="group",title="Relação de Mensagens por Mês e Tipo")
+# df1 = df_Z369[filtro3]
 
-# Exibir no Streamlit
-#st.plotly_chart(df2, x="mes", y="count", color="DESC STATUS")
-
-#st.bar_chart(df2, x='DESC STATUS', y='dt_abertura_trated')
+# st.dataframe(df1)
