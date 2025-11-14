@@ -1,0 +1,73 @@
+/* .stButton > button{
+    background-color: rgb(255, 213, 0);
+}  */
+
+ /* .st-emotion-cache-i22xvw{
+    background-color: blue;
+}  */
+
+
+/* #stBaseButton{
+    background-color: red;
+} */
+ /* .st-emotion-cache-i22xvw > button[data-testid="st-key-botao_de_teste"]{
+    background-color: red;
+    color: red;
+ } */
+
+/* .st-key-botao1{
+    background-color: blue;
+} */
+/* .st-emotion-cache-zh2fnc{
+    background-color: blueviolet;
+}
+
+.st-key-botao2 #stButton{
+    background-color: red;
+}
+
+/* style.css */
+
+/* Botão amarelo */
+.st-key-btn1 > .stButton > button {
+  background-color: rgb(255, 213, 0);
+  color: #1a1a1a;
+  border: 1px solid #e0b800;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.15s ease;
+}
+.st-key-btn1 > .stButton > button:hover {
+  background-color: lab(92.77% 0.34 0.11 / 0.926);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Botão outline */
+.st-key-btn2 > .stButton > button {
+  background-color: transparent;
+  color: #111;
+  border: 2px solid #111;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+}
+
+/* Botão danger */
+.st-key-btn3 > .stButton > button {
+  background-color: #e53935;
+  color: #fff;
+  border: 1px solid #b71c1c;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+}
+
+
+.st-key-container1{
+  background-color: #4909d4; /* Cor de fundo (azul claro) */
+  padding: 20px; /* Preenchimento interno */
+  border-radius: 10px; /* Borda arredondada */
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Sombra */
+}
