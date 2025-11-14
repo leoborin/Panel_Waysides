@@ -14,58 +14,22 @@ st.set_page_config(layout="wide")
 # Função para conectar e buscar dados
 
 
-@st.cache_data(ttl=600)  # busca notas por vagão z369 TRKV WCM
-@st.cache_data(ttl=600)
-def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-    # Buscar últimos 5 documentos ordenados por timestamp decrescente
-    docs = list(collection.find().sort("timestamp", -1).limit(lines))
+# @st.cache_data(ttl=600)
+# def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5):
+#     client = MongoClient(MONGO_URI)
+#     db = client[DB_NAME]
+#     collection = db[COLLECTION_NAME]
+#     # Buscar últimos 5 documentos ordenados por timestamp decrescente
+#     docs = list(collection.find().sort("timestamp", -1).limit(lines))
 
-    if docs:
-        # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
-        if 'json_documents' in df.columns:
-            df['json_documents'] = df['json_documents'].fillna('').astype(str)
-        return df
-    else:
-        return pd.DataFrame()  # DataFrame vazio
-
-
-@st.cache_data(ttl=600)
-def function_to_get_data_from_z369(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10000):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-    # Buscar últimos documentos ordenados por timestamp decrescente
-    docs = collection.find().sort("dt_abertura_trated", -1).limit(lines)
-
-    if docs:
-        # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
-        if 'json_documents' in df.columns:
-            df['json_documents'] = df['json_documents'].fillna('').astype(str)
-        return df
-    else:
-        return pd.DataFrame()  # DataFrame vazio
-
-
-@st.cache_data
-def get_latest_documents():
-    COLLECTION_NAME = "TRKV"
-    df_trkv = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5)
-
-    COLLECTION_NAME = "WCM"
-    df_WCM = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5)
-
-    COLLECTION_NAME = "z369_full"
-    df_Z369 = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME)
-
-    return df_trkv, df_WCM, df_Z369
+#     if docs:
+#         # Converter lista de documentos para DataFrame, removendo coluna _id
+#         df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
+#         if 'json_documents' in df.columns:
+#             df['json_documents'] = df['json_documents'].fillna('').astype(str)
+#         return df
+#     else:
+#         return pd.DataFrame()  # DataFrame vazio
 
 
 logo = Image.open("assets/logo.png")
@@ -79,28 +43,38 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs(
     ["Verify", "Consulta Master", "Saúde de Frota", "Chat Bot", "Sobre", "Testes de componentes"])
 
 with aba1:
-    st.header("Consulta MongoDB")
-    if st.button("Carregar últimos 5 documentos"):
-        df_WCM, df_trkv = get_latest_documents()
+    st.header("Consulta de verificação")
+    if st.button("Verificar Bases"):
+        import pandas as pd
+        from pymongo import MongoClient
 
-        if df_WCM.empty:
-            st.warning("Nenhum documento encontrado em WCM.")
-        else:
-            st.subheader("Tabela dos documentos carregados [WCM]")
-            st.dataframe(df_WCM)
+        client = MongoClient(MONGO_URI)
 
-        if df_trkv.empty:
-            st.warning("Nenhum documento encontrado em TRKV.")
-        else:
-            st.subheader("Tabela dos documentos carregados [TRKV]")
-            st.dataframe(df_trkv)
+        collection = client[DB_NAME]['base_last_update']
+
+        # Buscar todos os documentos
+        cursor = collection.find({})
+
+        # Transformar em lista e depois em DataFrame
+        df = pd.DataFrame(list(cursor))
+
+        # Remover o _id se não quiser no DataFrame
+        df = df.drop(columns=["_id"], errors="ignore")
+
+        st.dataframe(df)
+
 
 # ======= Aba 2 - Consulta master =======
 with aba2:
     import numpy as np
     import plotly.express as px
+    import plotly.graph_objects as go
     import pandas as pd
     from datetime import datetime
+    import re
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time
 
     st.header("Consulta Completa Vagões v0")
     # st.write("POC Testes")
@@ -108,11 +82,53 @@ with aba2:
     # functions Begin --------------------------------------------------
     # main def
     def busca_dados(vagao):
+        def busca_z1568(vagao):
+            # Conexão com o MongoDB
+            vagao = int(vagao)
+            client = MongoClient(
+                MONGO_URI)
+
+            # Definição do filtro
+            filter = {'ATIVO': re.compile(f"{vagao}")}
+
+            # Consulta
+            cursor = client[DB_NAME]['z1568_Liberacoes_Retencoes_full'].find(
+                filter)
+
+            # Converter o cursor em lista e depois em DataFrame
+            df = pd.DataFrame(list(cursor))
+
+            # (Opcional) Remover a coluna _id, se não for necessária
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
+
+            return df
+
+        def busca_z851(vagao):
+            # Conexão com o MongoDB
+            vagao = int(vagao)
+            client = MongoClient(
+                MONGO_URI)
+
+            # Definição do filtro
+            filter = {'EQUNR': re.compile(f"{vagao}")}
+
+            # Consulta
+            cursor = client[DB_NAME]['CadastroVagoes_full'].find(filter)
+
+            # Converter o cursor em lista e depois em DataFrame
+            df = pd.DataFrame(list(cursor))
+
+            # (Opcional) Remover a coluna _id, se não for necessária
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
+
+            return df
 
         def busca_wcm(vagao):
             # Conexão com o MongoDB
             client = MongoClient(
-                'mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin')
+                MONGO_URI)
             vagao_str = str(vagao)
             # Pipeline de agregação
             pipeline = [
@@ -144,7 +160,7 @@ with aba2:
             ]
 
             # Executa a agregação
-            result = client['supervisorio']['WCM'].aggregate(pipeline)
+            result = client[DB_NAME]['WCM'].aggregate(pipeline)
 
             # Converte o resultado em DataFrame
             df = pd.DataFrame(list(result))
@@ -158,7 +174,7 @@ with aba2:
         def busca_z369(vagao):
             # Conexão com o MongoDB
             client = MongoClient(
-                'mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin')
+                MONGO_URI)
 
             vagao_str = str(vagao)
 
@@ -166,7 +182,7 @@ with aba2:
             filter = {"ATIVO_tratado": vagao_str}
 
             # Consulta
-            cursor = client['supervisorio']['z369_trated'].find(filter)
+            cursor = client[DB_NAME]['z369_trated'].find(filter)
 
             # Converter o cursor em lista e depois em DataFrame
             df = pd.DataFrame(list(cursor))
@@ -181,13 +197,13 @@ with aba2:
             # Conexão com o MongoDB
             vagao = int(vagao)
             client = MongoClient(
-                'mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin')
+                MONGO_URI)
 
             # Definição do filtro
             filter = {'CarIDNumber': vagao}
 
             # Consulta
-            cursor = client['supervisorio']['TRKV_treated'].find(filter)
+            cursor = client[DB_NAME]['TRKV_treated'].find(filter)
 
             # Converter o cursor em lista e depois em DataFrame
             df = pd.DataFrame(list(cursor))
@@ -198,16 +214,56 @@ with aba2:
 
             return df
 
-        df_WCM = busca_wcm(vagao)
-        df_z369 = busca_z369(vagao)
-        df_trkv = busca_TRKV(vagao)
+        def medir_tempo(func, *args, **kwargs):
+            inicio = time.time()
+            resultado = func(*args, **kwargs)
+            fim = time.time()
+            print(f"{func.__name__} executou em {fim - inicio:.2f} segundos")
+            return resultado
+
+        def exec_parallel(vagao):
+            funcoes = [
+                busca_wcm,
+                busca_z369,
+                busca_TRKV,
+                busca_z851,
+                busca_z1568
+            ]
+
+            resultados = {}
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {
+                    executor.submit(medir_tempo, f, vagao): f.__name__
+                    for f in funcoes
+                }
+
+                for future in as_completed(futures):
+                    nome = futures[future]
+                    try:
+                        resultados[nome] = future.result()
+                    except Exception as e:
+                        print(f"Erro na função {nome}: {e}")
+                        resultados[nome] = None
+
+            return resultados
+
+        result = exec_parallel(vagao)
+
+        df_WCM = result["busca_wcm"]
+        df_z369 = result["busca_z369"]
+        df_trkv = result["busca_TRKV"]
+        df_z851 = result["busca_z851"]
+        df_z1568 = result["busca_z1568"]
 
         print(len(df_WCM))
         print(len(df_z369))
         print(len(df_trkv))
+        print(len(df_z851))
+        print(len(df_z1568))
         st.success("Função executada com sucesso!")
 
-        return df_WCM, df_z369, df_trkv
+        return df_WCM, df_z369, df_trkv, df_z851, df_z1568
 
     def tratar_dfs(df_WCM, df_z369, df_trkv):
 
@@ -281,92 +337,117 @@ with aba2:
             df_z369_trated = df_z369[['NOTA', 'ATIVO', 'TP NOTA', 'STATUS',
                                       'dt_abertura_trated', 'dt_fechamento_trated', 'Texto_Completo']]
 
-            df_z369_Aberturas = df_z369_trated[[
-                'dt_abertura_trated', 'TP NOTA', 'NOTA', 'Texto_Completo', 'STATUS']]
-            df_z369_Aberturas["Evento"] = "Abertura"
-            df_z369_Aberturas = df_z369_Aberturas.rename(columns={
-                'dt_abertura_trated': 'Data',
+            df_timeline_z369 = df_z369_trated.copy()
+
+            df_timeline_z369 = df_timeline_z369.rename(columns={
+                "NOTA": "Evento",
+                "TP NOTA": "Tipo_Evento",
+                "dt_abertura_trated": "INICIO",
+                "dt_fechamento_trated": "FIM"
             })
+            df_timeline_z369['Evento'] = "NOTA_" + \
+                df_timeline_z369['Evento'].astype(str)
 
-            df_z369_fechamentos = df_z369_trated[df_z369_trated['dt_fechamento_trated'].notnull(
-            )]
-            df_z369_fechamentos = df_z369_fechamentos[[
-                'dt_fechamento_trated', 'TP NOTA', 'NOTA', 'Texto_Completo', 'STATUS']]
-            df_z369_fechamentos = df_z369_fechamentos.rename(columns={
-                'dt_fechamento_trated': 'Data',
-            })
-            df_z369_fechamentos["Evento"] = "Fechamento"
+            return df_timeline_z369, df_z369_trated
 
-            # Concatenar os dois dataframes um embaixo do outro
-            df_z369_total = pd.concat(
-                [df_z369_Aberturas, df_z369_fechamentos], ignore_index=True)
+        df_timeline_z369, df_z369_trated = tratar_z369(df_z369)
 
-            # Ordenar pela coluna "Data"
-            df_z369_total = df_z369_total.sort_values(
-                by='Data', ascending=True).reset_index(drop=True)
-            df_z369_total["NOTA"] = "NOTA-" + df_z369_total["NOTA"].astype(str)
-
-            return df_z369_total, df_z369_trated
-
-        df_z369_total, df_z369_trated = tratar_z369(df_z369)
-
-        return df_trkv_trated, df_wcm_trated, df_z369_total, df_z369_trated
+        return df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated
 
     def inserir_wcm_hist(df_wcm_trated):
         df_wcm_trated_histgeral = df_wcm_trated.copy()
+        print(df_wcm_trated)
         # 1) Garantir datetime (com hora) na coluna Data
-        df_wcm_trated_histgeral['Data'] = pd.to_datetime(
+        df_wcm_trated_histgeral['INICIO'] = pd.to_datetime(
             df_wcm_trated_histgeral['Data'])
-        df_wcm_trated_histgeral['TP NOTA'] = "Passagem wcm"
-        df_wcm_trated_histgeral['NOTA'] = "wcm_" + \
-            df_wcm_trated_histgeral['Data'].astype(str)
+        df_wcm_trated_histgeral['Tipo_Evento'] = "Passagem wcm"
+        # + \            df_wcm_trated_histgeral['Data'].astype(str)
+        df_wcm_trated_histgeral['Evento'] = "wcm"
+
         df_wcm_trated_histgeral['Texto_Completo'] = "Maior_Impacto_kN = " + \
             df_wcm_trated_histgeral['Maior_Impacto_kN'].astype(str)
 
-        df_wcm_trated_ab = df_wcm_trated_histgeral.copy()
-        df_wcm_trated_ab['Evento'] = "Abertura"
+        df_wcm_trated_histgeral["Data"] = pd.to_datetime(
+            df_wcm_trated_histgeral["Data"], format="%Y-%m-%d %H:%M")
+        df_wcm_trated_histgeral["FIM"] = (
+            df_wcm_trated_histgeral["Data"] + pd.to_timedelta(12, unit="h")
+        )
+        df_wcm_trated_histgeral['Tipo_Evento'] = "WCM"
 
-        df_wcm_trated_fx = df_wcm_trated_histgeral.copy()
-        df_wcm_trated_fx['Data'] = df_wcm_trated_fx['Data'] + \
-            pd.to_timedelta(12, unit='h')
-        df_wcm_trated_fx['Evento'] = "Fechamento"
-
-        # Agora sim, cada um é independente
-        df_wcm_total = pd.concat(
-            [df_wcm_trated_ab, df_wcm_trated_fx], ignore_index=True)
-        df_wcm_total = df_wcm_total[[
-            'Data', 'TP NOTA', 'NOTA', 'Texto_Completo', 'Evento']]
+        df_wcm_total = df_wcm_trated_histgeral[[
+            'Evento', 'INICIO', 'FIM', 'Texto_Completo', 'Tipo_Evento']]
 
         return df_wcm_total
 
     def inserir_trkv_hist(df_trkv_trated):
         df_trkv_trated_histgeral = df_trkv_trated.copy()
-        df_trkv_trated_histgeral['Data'] = pd.to_datetime(
+        # print(df_trkv_trated)
+        # 1) Garantir datetime (com hora) na coluna Data
+        df_trkv_trated_histgeral['INICIO'] = pd.to_datetime(
             df_trkv_trated_histgeral['Data'])
-        df_trkv_trated_histgeral['TP NOTA'] = "Passagem trkv"
-        df_trkv_trated_histgeral['NOTA'] = "trkv_" + \
-            df_trkv_trated_histgeral['Data'].astype(str)
+        df_trkv_trated_histgeral['Tipo_Evento'] = "Passagem trkv"
+        # + \            df_trkv_trated_histgeral['Data'].astype(str)
+        df_trkv_trated_histgeral['Evento'] = "trkv"
+
         df_trkv_trated_histgeral['Texto_Completo'] = "TRKV_MAX_Cunha = " + \
             df_trkv_trated_histgeral['TRKV_MAX_Cunha'].astype(str)
 
-        df_trkv_trated_ab = df_trkv_trated_histgeral.copy()
-        df_trkv_trated_ab['Evento'] = "Abertura"
+        df_trkv_trated_histgeral["Data"] = pd.to_datetime(
+            df_trkv_trated_histgeral["Data"], format="%Y-%m-%d %H:%M")
+        df_trkv_trated_histgeral["FIM"] = (
+            df_trkv_trated_histgeral["Data"] + pd.to_timedelta(12, unit="h")
+        )
+        df_trkv_trated_histgeral['Tipo_Evento'] = "trkv"
 
-        df_trkv_trated_fx = df_trkv_trated_histgeral.copy()
-        df_trkv_trated_fx['Data'] = df_trkv_trated_fx['Data'] + \
-            pd.to_timedelta(12, unit='h')
-        df_trkv_trated_fx['Evento'] = "Fechamento"
-
-        # Agora sim, cada um é independente
-        df_trkv_total = pd.concat(
-            [df_trkv_trated_ab, df_trkv_trated_fx], ignore_index=True)
-        df_trkv_total = df_trkv_total[[
-            'Data', 'TP NOTA', 'NOTA', 'Texto_Completo', 'Evento']]
+        df_trkv_total = df_trkv_trated_histgeral[[
+            'Evento', 'INICIO', 'FIM', 'Texto_Completo', 'Tipo_Evento']]
 
         return df_trkv_total
 
+    def inserir_z1568(df_z1568):
+
+        # df_z1568['dt_inicio_trated'] = pd.to_datetime(
+        #     df_z1568['dt_inicio_trated'])
+        # df_z1568['dt_inicio_trated'] = df_z1568['dt_inicio_trated'].dt.date
+
+        # df_z1568['dt_fim_trated'] = pd.to_datetime(df_z1568['dt_fim_trated'])
+        # df_z1568['dt_fim_trated'] = df_z1568['dt_fim_trated'].dt.date
+
+        df_z1568['Texto_Completo'] = (
+            df_z1568[['PMV', 'STATUS', 'GRUPO_AVARIA', 'TEXTO']]
+            .fillna('')  # substitui NaN por vazio
+            .agg(' | '.join, axis=1)  # concatena linha a linha
+            .str.strip(' | ')  # remove separador no fim se faltar campo
+        )
+
+        df_z1568_trated = df_z1568[['Documento', 'ATIVO', 'ID_Manutecao',
+                                    'dt_inicio_trated', 'dt_fim_trated', 'Texto_Completo']]
+
+        df_timeline_z1568 = df_z1568_trated.copy()
+
+        df_timeline_z1568 = df_timeline_z1568.rename(columns={
+            "Documento": "Evento",
+            "ID_Manutecao": "Tipo_Evento",
+            "dt_inicio_trated": "INICIO",
+            "dt_fim_trated": "FIM"
+        })
+        df_timeline_z1568["Evento"] = "Doc_Retencao_" + \
+            df_timeline_z1568["Evento"].astype(str)
+
+        return df_timeline_z1568
+
     def minha_funcao(texto):
         st.write(f"Você digitou: {texto}")
+
+    def tratar_entrada(codigo: str) -> str:
+        # Mantém apenas dígitos
+        apenas_numeros = "".join(filter(str.isdigit, codigo))
+
+        # Remove zeros à esquerda
+        sem_zeros = apenas_numeros.lstrip("0")
+
+        # Garante que não retorne vazio (ex: "000HPT")
+        return sem_zeros if sem_zeros else "0"
 
     # functions End ----------------------------------------------------
     # Tela -----------------------
@@ -376,165 +457,400 @@ with aba2:
     # Botão que executa a função
     if st.button("Executar função"):
         with st.spinner("🔄 Processando... Aguarde alguns segundos..."):
-            minha_funcao(vg_entrada)
-            df_WCM, df_z369, df_trkv = busca_dados(vg_entrada)
 
-            df_trkv_trated, df_wcm_trated, df_z369_total, df_z369_trated = tratar_dfs(
+            vg_entrada = tratar_entrada(vg_entrada)
+            minha_funcao(vg_entrada)
+
+            df_WCM, df_z369, df_trkv, df_z851, df_z1568 = busca_dados(
+                vg_entrada)
+
+            df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated = tratar_dfs(
                 df_WCM, df_z369, df_trkv)
 
-# linha do tempo begin
-            import plotly.express as px
-            from datetime import datetime
-            import pandas as pd
+# ===== CSS Google Material =====
+            def resumo_z1568():
+                st.markdown("""
+                <style>
 
-            # ... (seu código anterior)
-            wcm_hist = inserir_wcm_hist(df_wcm_trated)
-            trkv_hist = inserir_trkv_hist(df_trkv_trated)
+        /* ===== CARD ===== */
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px 18px;
+            border: 1px solid #ececec;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: 0.18s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 90px;
 
-            # ====== Linha do tempo ======
-            import plotly.express as px
-            from datetime import datetime
-            import pandas as pd
-            import streamlit as st
+            /* mais espaçamento superior entre as linhas */
+            margin-top: 14px;
+        }
 
-            # ... (seu código anterior de preparação)
+        .card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transform: translateY(-1px);
+        }
 
-            # ====== Linha do tempo ======
-            df = pd.concat([df_z369_total, trkv_hist,
-                           wcm_hist], ignore_index=True)
-            df["Data"] = pd.to_datetime(df["Data"])
+        /* ===== TEXTOS ===== */
+        .card-title {
+            font-size: 12.8px;
+            font-weight: 600;
+            color: #6d6d6d;
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+        }
 
-            # === Agrupar aberturas e fechamentos ===
-            aberturas = df[df["Evento"] == "Abertura"].groupby(
-                "NOTA").first().reset_index()
-            fechamentos = df[df["Evento"] == "Fechamento"].groupby(
-                "NOTA").first().reset_index()
+        .card-value {
+            font-size: 19px;
+            font-weight: 600;
+            color: #1d1d1d;
+            line-height: 1.25;
+            letter-spacing: 0.1px;
+        }
 
-            timeline = pd.merge(
-                aberturas[["NOTA", "TP NOTA",
-                           "Texto_Completo", "Data", "STATUS"]],
-                fechamentos[["NOTA", "Data"]],
-                on="NOTA",
-                how="left",
-                suffixes=("_Abertura", "_Fechamento")
-            )
+        /* ===== RESPONSIVIDADE ===== */
 
-            timeline["Data_Fechamento"] = timeline["Data_Fechamento"].fillna(
-                pd.Timestamp(datetime.now()))
+        @media (max-width: 1200px) {
+            .card-value { font-size: 18px; }
+        }
 
-            # === Filtro de ano com opção "Todos" ===
-            timeline["Ano_Abertura"] = timeline["Data_Abertura"].dt.year
-            anos_disponiveis = sorted(
-                timeline["Ano_Abertura"].unique(), reverse=True)
-            anos_opcoes = ["Todos os anos"] + \
-                [str(a) for a in anos_disponiveis]
-            ano_selecionado = st.selectbox("📅 Selecione o ano:", anos_opcoes)
+        @media (max-width: 900px) {
+            .card { padding: 18px; min-height: 80px; }
+            .card-value { font-size: 17px; }
+        }
 
-            if ano_selecionado != "Todos os anos":
-                timeline = timeline[timeline["Ano_Abertura"]
-                                    == int(ano_selecionado)]
+        @media (max-width: 600px) {
+            .card { padding: 16px; min-height: 70px; }
+            .card-title { font-size: 12px; }
+            .card-value { font-size: 16px; }
+        }
 
-            # === Dicionário de cores ===
-            cores = {
-                "M1": "#F1C40F",
-                "M2": "#E74C3C",
-                "M3": "#2E86C1",
-                "M4": "#8E44AD",
-                "M5": "#2BC064",
-                "M6": "#6E2C00",
-                "M7": "#27AE60",
-                "M8": "#17A589",
-                "M9": "#7F8C8D",
-                "Passagem trkv": "#7F8C8D",
-                "Passagem WCM": "#7F8C8D"
-            }
+    </style>
 
-            significados = {
-                "M1": "Nota monitorada",
-                "M2": "Nota crítica",
-                "M3": "Nota de retenção",
-                "M4": "Nota da Engenharia",
-                "M5": "Encerramento manutenção corretiva",
-                "M6": "Vagão acidentado/descarrilado",
-                "M7": "Encerramento manutenção preventiva",
-                "M8": "Plano do PCM",
-                "M9": "Vandalismo",
-                "Passagem trkv": "trkv",
-                "Passagem WCM": "WCM"
-            }
+                """, unsafe_allow_html=True)
 
-            timeline["Tipo_Nota_Desc"] = timeline["TP NOTA"].map(significados)
+                # ===== Dados =====
+                row = df_z851.iloc[0]
 
-            # === Ordenar legenda alfabeticamente ===
-            categorias_ordenadas = sorted(
-                timeline["TP NOTA"].dropna().unique())
-            timeline["TP NOTA"] = pd.Categorical(
-                timeline["TP NOTA"], categories=categorias_ordenadas, ordered=True)
+                campos = [
+                    'EQUNR',
+                    'BITOLA',
+                    'MALHA',
+                    'DATA_DE_FABRICACAO_trated',
+                    'DATA_FIM_trated',
+                    'DATA_GARANTIA_trated',
+                    'KM_RODADO_DESDE_ULTIMA_RG',
+                    'MODELO',
+                    'STATUS',
+                    'ULTIMA_RG',
+                    'ULTIMA_RI',
+                    'ULTIMA_RR'
+                ]
 
-            # === Plotly Timeline ===
-            fig = px.timeline(
-                timeline,
-                x_start="Data_Abertura",
-                x_end="Data_Fechamento",
-                y="NOTA",
-                color="TP NOTA",
-                text="NOTA",
-                hover_data={
-                    "STATUS": True,
-                    "Texto_Completo": True,
-                    "Tipo_Nota_Desc": True,
-                    "TP NOTA": True,
-                    "Data_Abertura": True,
-                    "Data_Fechamento": True
-                },
-                color_discrete_map=cores,
-                category_orders={"TP NOTA": categorias_ordenadas}
-            )
+                st.subheader("📌 Informações do Vagão")
 
-            fig.update_yaxes(autorange="reversed")
-            fig.update_layout(
-                title=f"Linha do Tempo de Notas ({ano_selecionado})",
-                xaxis_title="Data",
-                yaxis_title="Número da Nota",
-                height=600,
-                hoverlabel_bgcolor="white",
-                legend_title_text="Tipo de Nota",
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="center",
-                    x=0.5
+                cards_por_linha = 3
+
+                # ===== Renderização =====
+                for i in range(0, len(campos), cards_por_linha):
+                    cols = st.columns(cards_por_linha)
+
+                    for idx, campo in enumerate(campos[i:i + cards_por_linha]):
+                        valor = row[campo]
+
+                        with cols[idx]:
+                            st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">{campo}</div>
+                                    <div class="card-value">{valor}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                st.subheader("Linha do Tempo")
+
+            resumo_z1568()
+# -------------------------------------------------------------------RESUMO
+
+            def plotar_gaph_resumo():
+                import plotly.express as px
+                import pandas as pd
+                import streamlit as st
+
+                df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
+
+                df_trkv_timeline = inserir_trkv_hist(df_trkv_trated)
+
+                df_z1568_timeline = inserir_z1568(
+                    df_z1568).reset_index(drop=True)
+
+                print(df_z1568_timeline)
+
+                df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,  df_trkv_timeline]
+                                     )
+
+                df = df_final  # ajustarr
+                mapa_traducao = {
+                    "M1": "Nota monitorada",
+                    "M2": "Nota crítica",
+                    "M3": "Nota de retenção",
+                    "M4": "Nota da Engenharia",
+                    "M5": "Encerramento manutenção corretiva",
+                    "M6": "Vagão acidentado/descarrilado",
+                    "M7": "Encerramento manutenção preventiva",
+                    "M8": "Plano do PCM",
+                    "M9": "Vandalismo",
+                    "trkv": "Passagem no TruckView",
+                    "wcm": "Passagem no Impacto de Rodas",
+                    "MC": "Manutenção Corretiva",
+                    "RG": "Revisão Geral",
+                    "RA": "Revisão Anual"
+
+                }
+
+                df["Tipo_Evento_Traduzido"] = df["Tipo_Evento"].map(
+                    mapa_traducao)
+
+                # st.dataframe(df)
+                # Converte datas
+                # Converte datas
+                df["INICIO"] = pd.to_datetime(
+                    df["INICIO"], format="%Y-%m-%d %H:%M")
+                df["FIM"] = pd.to_datetime(df["FIM"], format="%Y-%m-%d %H:%M")
+
+                df["INICIO_"] = df["INICIO"].dt.strftime("%d/%m/%Y")
+                df["FIM_"] = df["FIM"].dt.strftime("%d/%m/%Y")
+
+                df["Fim_Aux"] = df["FIM"].fillna(pd.Timestamp.now())
+
+                # ORDEM ALFABÉTICA DA LEGENDA
+                ordem_legenda = sorted(df["Tipo_Evento"].unique())
+
+                # CORES FIXAS
+                cores_eventos = {
+                    "M1": "#faf74f",
+                    "M2": "#d62728",
+                    "M3": "#cf8517",
+                    "M4": "#67a5bd",
+                    "M5": "#6aa02c",
+                    "M6": "#75140d",
+                    "M7": "#2ca02c",
+                    "M8": "#0e9fff",
+                    "M9": "#7f7f7f",
+                    "trkv": "#c660f5",
+                    "wcm": "#ff57f1",
+                    "MC": "#4b8d00",
+                    "RG": "#2ca02c",
+                    "RA": "#2ca02c"
+                }
+
+                fig = px.timeline(
+                    df,
+                    x_start="INICIO",
+                    x_end="Fim_Aux",
+                    y="Evento",
+                    color="Tipo_Evento",
+                    text="Tipo_Evento",
+                    hover_data={
+                        "Fim_Aux": False,
+                        "INICIO_": True,
+                        "FIM_": True,
+                        "Tipo_Evento": True,
+                        "Tipo_Evento_Traduzido": True,
+                        "Texto_Completo": True
+                    },
+                    category_orders={"Tipo_Evento": ordem_legenda},
+                    color_discrete_map=cores_eventos
                 )
+
+                # Aumentar altura da barra
+                fig.update_traces(
+                    width=1,              # AUMENTA altura da barra
+                    textfont_size=25,
+                    textangle=0,
+                    # textposition="inside",
+                    # insidetextanchor="middle",
+                    cliponaxis=True
+                )
+
+                fig.update_yaxes(autorange="reversed")
+
+                st.plotly_chart(fig, use_container_width=True)
+
+            plotar_gaph_resumo()
+# -------------------------------------------------------------------RESUMO
+
+# graficos WCM e TRKV
+
+ #       def regrecao():
+# -------------------------------------------------------------------Regressão
+        from sklearn.linear_model import LinearRegression
+        from sklearn.metrics import mean_squared_error, mean_absolute_error
+        from sklearn.metrics import root_mean_squared_error
+        import pandas as pd
+        import plotly.graph_objects as go
+
+        # =========================
+        # 1. Garantir que Data é datetime
+        # =========================
+        df_trkv_trated["Data"] = pd.to_datetime(
+            df_trkv_trated["Data"], errors="coerce")
+
+        # Remover linhas sem Data ou sem valores
+        df_trkv_trated = df_trkv_trated.dropna(
+            subset=["Data", "TRKV_MAX_Cunha"])
+
+        # Ordenar por data (importante!)
+        df_trkv_trated = df_trkv_trated.sort_values("Data")
+
+        # =========================
+        # 2. Regressão Linear
+        # =========================
+        X = df_trkv_trated["Data"].map(
+            pd.Timestamp.toordinal).values.reshape(-1, 1)
+        y = df_trkv_trated["TRKV_MAX_Cunha"].values
+
+        model = LinearRegression()
+        model.fit(X, y)
+
+        slope = model.coef_[0]
+        intercept = model.intercept_
+        # Predição
+        y_pred = model.predict(X)
+        # ====== MÉTRICAS ======
+        r2 = model.score(X, y)
+        rmse = root_mean_squared_error(y, y_pred)
+        mae = mean_absolute_error(y, y_pred)
+
+        print(f"R²:   {r2:.4f}")
+        print(f"MAE:  {mae:.4f}")
+        print(f"RMSE: {rmse:.4f}")
+
+        print(f"Coeficiente angular (slope): {slope:.4f}")
+# -------------------------------------------------------------------Regressão
+        # df_trkv_trated, r2, mae, rmse = regrecao()
+
+        def plot_Waysides():
+            # =========================
+            # 3. Gráfico TRKV + Regressão
+            # =========================
+            fig_trkv = go.Figure()
+
+            # --- SÉRIE REAL ---
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=df_trkv_trated["TRKV_MAX_Cunha"],
+                mode="lines+markers+text",
+                text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
+                textposition="top center",
+                name="TRKV_MAX_Cunha",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
+
+            # --- LINHA DE REGRESSÃO ---
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=y_pred,
+                mode="lines",
+                line=dict(width=2, dash="dash", color="#A52BE3"),
+                name=f"Regressão Linear (slope={slope:.4f})"
+            ))
+
+            fig_trkv.update_layout(
+                title="TRKV - com Regressão Linear",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            # Ajuste do range do eixo Y
+            fig_trkv.update_yaxes(range=[10, 70])
 
+            # =========================
+            # WCM
+            # =========================
 
-# linha do tempo End
+            df_wcm_trated["Alarme"] = 200
+
+            fig_wcm = go.Figure()
+
+            # Curva principal
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Maior_Impacto_kN"],
+                mode="lines+markers+text",
+                text=df_wcm_trated["Maior_Impacto_kN"].round(1).astype(str),
+                textposition="top center",
+                name="Maior_Impacto_kN",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
+
+            # Linha de limite
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Alarme"],
+                mode="lines",
+                name="Alarme 200 kN",
+                line=dict(color="red", width=2, dash="dash")
+            ))
+
+            fig_wcm.update_layout(
+                title="wcm",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380
+            )
+
+            fig_wcm.update_yaxes(range=[0, 300])
+            # =========================
+            # STREAMLIT LAYOUT
+            # =========================
+
             col1, col2 = st.columns(2)
+
             with col1:
-                st.header("📈 Truck View - TRKV_MAX_Cunha")
-                # df_trkv_trated["Alarme"]
-                st.line_chart(df_trkv_trated, x="Data", y="TRKV_MAX_Cunha")
+                st.subheader("TRKV Cunha Máximo Passagem (mm)")
+                st.plotly_chart(fig_trkv, use_container_width=True)
+                st.markdown(f"""
+                **R²:** `{r2:.4f}`  
+                **MAE:** `{mae:.4f}`  
+                **RMSE:** `{rmse:.4f}`  
+                """)
                 st.dataframe(df_trkv_trated)
 
             with col2:
-                st.header("📈 WCM - Maior_Impacto_kN")
-                df_wcm_trated["Alarme"] = 200
-                st.line_chart(df_wcm_trated, x="Data", y=[
-                              "Maior_Impacto_kN", "Alarme"])
 
+                st.subheader("WCM Maior Impacto (kN)")
+                st.plotly_chart(fig_wcm, use_container_width=True)
+                st.markdown(f"""
+                **Alarme Baixo:** `-`   
+                **Alarme Médio:** `-`   
+                **Alarme Alto:** `-`  
+                """)
                 st.dataframe(df_wcm_trated)
 
-            # Plota gráfico de linha
-
-            st.write("Dados z369")
-            st.dataframe(df_z369)
-            st.write("Dados WCM")
-            st.dataframe(df_WCM)
-            st.write("Dados TRKV")
-            st.dataframe(df_trkv)
+                # Plota gráfico de linha
+# graficos WCM e TRKV
+        plot_Waysides()
+        st.write("Dados z369")
+        st.dataframe(df_z369)
+        st.write("Dados WCM")
+        st.dataframe(df_WCM)
+        st.write("Dados TRKV")
+        st.dataframe(df_trkv)
+        st.write("Dados z851")
+        st.dataframe(df_z851)
+        st.write("Dados z1568")
+        st.dataframe(df_z1568)
 
     # Tela -----------------------
 
@@ -754,69 +1070,45 @@ with aba4:  # Chat Bot
 
 
 with aba5:
-    import streamlit as st
-    import pandas as pd
+
     import plotly.express as px
+    import pandas as pd
+    import streamlit as st
 
-    # ====== Exemplo do seu DataFrame ======
-    data = {
-        "Data": [
-            "2024-01-05", "2024-02-12", "2024-03-28", "2024-04-15", "2024-04-25",
-            "2024-05-10", "2024-06-06", "2024-06-06", "2024-06-07", "2024-06-07"
-        ],
-        "TP NOTA": ["M8", "M8", "M1", "M1", "M8", "M1", "M3", "M5", "M5", "M3"],
-        "NOTA": ["NOTA-23651936", "NOTA-23681796", "NOTA-23518544", "NOTA-23733050", "NOTA-23681796", "NOTA-23733050", "NOTA-23771970", "NOTA-23771971", "NOTA-23771971", "NOTA-23771970"],
-        "Texto_Completo": [
-            "Análise Acionamento - Inspeção", "INSP LONGARINA PRATO", "REVI MONITORADO | Amort",
-            "REVI MONITORADO | Freio", "INSP LONGARINA PRATO", "REVI MONITORADO | Freio",
-            "VGH DETECTOR ACÚSTICO", "MC RUMO PMV OFVRCI", "MC RUMO PMV OFVRCI", "VGH DETECTOR ACÚSTICO"
-        ],
-        "Evento": ["Abertura", "Abertura", "Abertura", "Abertura", "Fechamento", "Fechamento", "Abertura", "Abertura", "Fechamento", "Fechamento"]
-    }
+    df = pd.DataFrame({
+        "NOTA": ["NOTA-123", "NOTA-124"],
+        "Inicio": ["2024-01-01", "2024-01-01"],
+        "Fim": ["2024-02-01", None],
+        "Tipo": ["M1", "M2"]
+    })
 
-    df = pd.DataFrame(data)
-    df["Data"] = pd.to_datetime(df["Data"])
+    # Converte datas
+    df["Inicio"] = pd.to_datetime(df["Inicio"])
+    df["Fim"] = pd.to_datetime(df["Fim"])
 
-    # ====== Encontrar início e fim de cada NOTA ======
-    aberturas = df[df["Evento"] == "Abertura"].groupby(
-        "NOTA").first().reset_index()
-    fechamentos = df[df["Evento"] == "Fechamento"].groupby(
-        "NOTA").first().reset_index()
+    # Cria Fim_Aux: se Fim for nulo -> usa data atual
+    df["Fim_Aux"] = df["Fim"].fillna(pd.Timestamp.now())
 
-    # Unir Abertura e Fechamento
-    timeline = pd.merge(
-        aberturas[["NOTA", "TP NOTA", "Texto_Completo", "Data"]],
-        fechamentos[["NOTA", "Data"]],
-        on="NOTA",
-        how="left",
-        suffixes=("_Abertura", "_Fechamento")
-    )
-
-    # Se não tiver fechamento, usa a data da abertura como fim
-    timeline["Data_Fechamento"] = timeline["Data_Fechamento"].fillna(
-        timeline["Data_Abertura"])
-
-    # ====== Plotly Timeline ======
+    # Timeline usando Fim_Aux para x_end
     fig = px.timeline(
-        timeline,
-        x_start="Data_Abertura",
-        x_end="Data_Fechamento",
+        df,
+        x_start="Inicio",
+        x_end="Fim_Aux",
         y="NOTA",
-        color="TP NOTA",
+        color="Tipo",
         text="NOTA",
-        hover_data=["Texto_Completo"]
+        hover_data={
+            "Fim_Aux": False,   # não mostrar no hover
+            "Fim": True,        # mostrar o Fim original
+            "Inicio": True,
+            "Tipo": True,
+        }
     )
 
-    fig.update_yaxes(autorange="reversed")  # para ordenar de cima p/ baixo
-    fig.update_layout(
-        title="Linha do Tempo de Notas (Abertura → Fechamento)",
-        xaxis_title="Data",
-        yaxis_title="Tipo de Nota",
-        height=500,
-        hoverlabel_bgcolor="white"
-    )
+    fig.update_yaxes(autorange="reversed")
 
     st.plotly_chart(fig, use_container_width=True)
+    st.dataframe(df)
 
 
 with aba6:  # Teste de Componentes do STREAMLIT
