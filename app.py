@@ -594,6 +594,10 @@ with aba2:
                 df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,  df_trkv_timeline]
                                      )
 
+                df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
+                    lambda x: "" if x in ["WCM", "trkv"] else x
+                )
+
                 df = df_final  # ajustarr
                 mapa_traducao = {
                     "M1": "Nota monitorada",
@@ -655,7 +659,7 @@ with aba2:
                     x_end="Fim_Aux",
                     y="Evento",
                     color="Tipo_Evento",
-                    text="Tipo_Evento",
+                    text="Texto_Label",
                     hover_data={
                         "Fim_Aux": False,
                         "INICIO_": True,
@@ -880,7 +884,7 @@ with aba2:
                 x=df_projecao["Data"],
                 y=df_projecao["y_pred"],
                 mode="lines",
-                line=dict(width=2, dash="dot", color="#FF5733"),
+                line=dict(width=2, dash="dot", color="#5A5555"),
                 name="Projeção Futura (+30 dias)"
             ))
 
