@@ -1,105 +1,153 @@
 import streamlit as st
+import requests
+import io
+import json
+import re
+from datetime import datetime
 from pymongo import MongoClient
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
+WEBHOOK_URL = "http://35.185.213.101/webhook/chatbot"
 
-# Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
+# -----------------------------
+# 1) Envio ao Webhook
+# -----------------------------
+def send_message_to_webhook(message: str) -> str:
+    payload = {"message": message}
+    try:
+        response = requests.post(WEBHOOK_URL, json=payload, timeout=200)
+        if response.status_code == 200:
+            return response.text
+        else:
+            return f"Erro: resposta do servidor {response.status_code}"
+    except requests.exceptions.Timeout:
+        return "⏱️ Tempo limite excedido: o servidor demorou mais de 90 segundos para responder."
+    except Exception as e:
+        return f"Erro ao conectar: {str(e)}"
 
-st.set_page_config(layout="wide")
+# -----------------------------
+# 2) Utilidades para parsing
+# -----------------------------
+def _extract_json_block(text: str):
+    """
+    Procura por blocos ```json ... ``` ou ``` ... ``` e retorna o conteúdo.
+    """
+    m = re.search(r"```json\s*(.*?)```", text,
+                    flags=re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"```\s*(\{.*?\}|\[.*?\])\s*```", text, flags=re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return None
 
-# Função para conectar e buscar dados
+def _safe_json_loads(text: str):
+    """
+    Extrai e carrega JSON de forma segura.
+    Suporta JSON puro, blocos ```json```, ou trechos {…}/[…].
+    """
+    # 1. Tenta carregar o texto diretamente
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
 
-@st.cache_data(ttl=600)
-def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-    # Buscar últimos 5 documentos ordenados por timestamp decrescente
-    docs = list(collection.find().sort("timestamp", -1).limit(lines))
-    
+    # 2. Extrai bloco ```json ... ```
+    match = re.search(r"```json\s*(.*?)```", text,
+                        flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        try:
+            return json.loads(match.group(1).strip())
+        except Exception:
+            pass
 
-    if docs:
-        # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
-        if 'json_documents' in df.columns:
-            df['json_documents'] = df['json_documents'].fillna('').astype(str)
-        return df
-    else:
-        return pd.DataFrame()  # DataFrame vazio
+    # 3. Extrai primeiro trecho {...} ou [...]
+    match = re.search(r"(\{.*\}|\[.*\])", text, flags=re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except Exception:
+            pass
 
-@st.cache_data(ttl=600)
-def function_to_get_data_from_z369(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10000):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-    # Buscar últimos documentos ordenados por timestamp decrescente
-    docs = collection.find().sort("dt_abertura_trated", -1).limit(lines)
-    
+    return None
 
-    if docs:
-        # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
-        if 'json_documents' in df.columns:
-            df['json_documents'] = df['json_documents'].fillna('').astype(str)
-        return df
-    else:
-        return pd.DataFrame()  # DataFrame vazio
+def json_to_dataframe(obj):
+    """
+    Converte o objeto JSON (lista ou dicionário) em DataFrame.
+    """
+    if obj is None:
+        return None
 
+    if isinstance(obj, list):
+        if len(obj) == 0 or isinstance(obj[0], dict):
+            return pd.DataFrame(obj)
 
-@st.cache_data
-def get_latest_documents():
-    COLLECTION_NAME = "TRKV"
-    df_trkv = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5)
+    if isinstance(obj, dict):
+        # procura por chaves comuns
+        for key in ['data', 'items', 'result', 'rows']:
+            if key in obj and isinstance(obj[key], list):
+                if len(obj[key]) == 0 or isinstance(obj[key][0], dict):
+                    return pd.DataFrame(obj[key])
+        # se for um dict plano
+        return pd.DataFrame([obj])
 
-    COLLECTION_NAME = "WCM"
-    df_WCM = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5)
-    
-    COLLECTION_NAME = "z369_full"
-    df_Z369 = function_to_get_data(
-        MONGO_URI, DB_NAME, COLLECTION_NAME)
+    return None
 
-    return df_trkv, df_WCM, df_Z369
+def _format_date_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Converte colunas com 'dt' ou 'data' para formato dd/mm/yyyy."""
+    out = df.copy()
+    for col in out.columns:
+        if any(k in col.lower() for k in ['dt', 'data']):
+            try:
+                series = pd.to_datetime(
+                    out[col], errors='coerce', utc=True)
+                out[col] = series.dt.tz_localize(
+                    None).dt.strftime('%d/%m/%Y').fillna(out[col])
+            except Exception:
+                pass
+    return out
 
-logo = Image.open("assets/logo.png")
-st.logo(logo, size='large')
+def _remove_json_from_text(text: str) -> str:
+    """Remove blocos JSON para exibir apenas o texto."""
+    no_code = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    no_json = re.sub(r"\[[\s\S]*\]|\{[\s\S]*\}", "", no_code).strip()
+    no_json = re.sub(r"\n{3,}", "\n\n", no_json)
+    return no_json
 
+# --------------------------
+# INTERFACE STREAMLIT
+# --------------------------
+st.subheader("🤖 VAGO - ChatBot Vagões")
 
-st.header("🤖 Chat Bot")
-st.write("Converse com o assistente! (Protótipo)")
+user_msg = st.chat_input("Digite sua mensagem e pressione Enter")
 
-    # Mantém o histórico do chat
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if user_msg:
+    with st.chat_message("user"):
+        st.write(user_msg)
 
-    # Exibe o histórico de conversas
-for msg in st.session_state.chat_history:
-    if msg["role"] == "user":
-            st.chat_message("user").write(msg["content"])
-    else:
-            st.chat_message("assistant").write(msg["content"])
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        with st.spinner("⏳ Aguardando resposta do servidor..."):
+            response_text = send_message_to_webhook(user_msg)
 
-    # Campo de entrada de texto
-user_input = st.chat_input("Digite sua mensagem...")
+        placeholder.success("✅ Dados carregados com sucesso!")
 
-if user_input:
-        # Adiciona a mensagem do usuário
-    st.session_state.chat_history.append(
-            {"role": "user", "content": user_input})
+    # Extrai JSON
+    json_obj = _safe_json_loads(response_text)
+    df = json_to_dataframe(json_obj)
+    texto_sem_json = _remove_json_from_text(response_text)
 
-        # Resposta simulada (pode substituir por chamada a modelo de IA)
-    resposta = f"Você disse: '{user_input}'. vagão mais crítico é o HPT 4463877 com a pontuação 398. Esta é uma resposta simulada do bot 😊"
+    with st.chat_message("assistant"):
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            if texto_sem_json:
+                st.markdown(texto_sem_json)
 
-        # Adiciona resposta no histórico
-    st.session_state.chat_history.append(
-            {"role": "assistant", "content": resposta})
+            df = _format_date_columns(df)
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.markdown(
+                texto_sem_json if texto_sem_json else response_text)
 
-        # Exibe a resposta imediatamente
-    st.chat_message("assistant").write(resposta)
-        
