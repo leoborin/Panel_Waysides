@@ -14,7 +14,6 @@ st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 st.title("Saúde Frota")
-st.header("Gestão de Ativos")
 
 
 # Função para conectar e buscar dados

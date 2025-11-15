@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import streamlit.components.v1 as components
+import plotly.express as px
 
 #Criando um serviço multi-paginas
 #Utilizado para padronização de componentes para todas as paginas
@@ -28,6 +29,41 @@ st.badge("Success", icon=":material/check:", color="green")
 st.markdown(
     ":violet-badge[:material/star: Favorite] :orange-badge[⚠️ Needs review] :gray-badge[Deprecated]"
 )
+
+# Gera dados de exemplo
+dados = np.random.randn(10)
+df = pd.DataFrame({
+        "x": list(range(10)),
+        "y": dados,
+        "categoria": [f"L{i}" for i in range(10)]
+    })
+
+    # Cria layout 2x2a
+col1, col2 = st.columns(2)
+col3, col4 = st.columns(2)
+
+with col1:
+        st.subheader("Gráfico 1 - Linha 📈")
+        fig1 = px.line(df, x="x", y="y", markers=True, title="Série temporal")
+        st.plotly_chart(fig1, use_container_width=True)
+
+with col2:
+        st.subheader("Gráfico 2 - Barras 📊")
+        fig2 = px.bar(df, x="categoria", y="y",
+                      title="Distribuição por categoria")
+        st.plotly_chart(fig2, use_container_width=True)
+
+with col3:
+        st.subheader("Gráfico 3 - Histograma 📦")
+        fig3 = px.histogram(df, x="y", nbins=5,
+                            title="Distribuição dos valores")
+        st.plotly_chart(fig3, use_container_width=True)
+
+with col4:
+        st.subheader("Gráfico 4 - Pizza 🥧")
+        fig4 = px.pie(df.head(5), values="y", names="categoria",
+                      title="Top 5 categorias")
+        st.plotly_chart(fig4, use_container_width=True)
 
 # Defina o estilo CSS para o contêiner
 st.markdown("""
