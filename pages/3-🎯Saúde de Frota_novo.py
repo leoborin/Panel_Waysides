@@ -13,7 +13,7 @@ DB_NAME = "supervisorio"
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
-st.title("Saúde Frota")
+st.title("Saúde Frota -  Visão Macro")
 
 
 # Função para conectar e buscar dados
