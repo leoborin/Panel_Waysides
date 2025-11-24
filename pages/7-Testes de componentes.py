@@ -242,3 +242,12 @@ if st.button("baloes"):
     st.balloons()
 if st.button("snow"):
     st.snow()
+
+
+st.write(""""O que podemos mostrar:\n
+z369 - Quantas notas temos por vagão \n\n
+         Não precisa de outra tabela\n
+TRKV - qual a ultima medição valida de cada vagão \n
+         Não precisa de outra tabela\n
+WCM - qual a ultima medição valida de cada vagão \n
+         Não precisa de outra tabela\n""")

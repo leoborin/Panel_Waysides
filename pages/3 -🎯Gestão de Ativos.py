@@ -14,18 +14,61 @@ st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 
+pipeline1 = [ {
+      "$project": {
+        "Documento": 0,
+        "DT_HR_RET": 0,
+        "ESCOPO": 0,
+        "HORA FIM": 0,
+        "HORA INICIO": 0,
+        "PMV": 0,
+        "DISPONIBILIDADE": 0,
+        "SEQUENCIAL": 0,
+        "VAGAO": 0,
+        "data_sincronizacao": 0,
+        "DATA FIM": 0,
+        "DATA INICIO": 0,
+        "DATAREC": 0,
+        "dt_modificacao":0
+      }
+    },
+    {
+      "$sort": {
+        "dt_inicio_trated": -1
+      }
+    }
+  ]
+
+pipeline2 =[
+    {
+        '$project': {
+            'Documento': 0, 
+            'DT_HR_RET': 0, 
+            'ESCOPO': 0, 
+            'HORA FIM': 0, 
+            'HORA INICIO': 0, 
+            'PMV': 0,  
+            'SEQUENCIAL': 0, 
+            'VAGAO': 0, 
+            'data_sincronizacao': 0, 
+            'DATA FIM': 0, 
+            'DATA INICIO': 0, 
+            'DATAREC': 0,
+            "dt_modificacao":0
+        }
+    }
+]
 # Função para conectar e buscar dados
 
 @st.cache_data(ttl=600)
-def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=5):
+def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME,PIPELINE):
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
     collection = db[COLLECTION_NAME]
-    # Buscar últimos 5 documentos ordenados por timestamp decrescente
-    docs = list(collection.find().sort("timestamp", -1).limit(lines))
+    docs = list(collection.aggregate(PIPELINE))
     if docs:
         # Converter lista de documentos para DataFrame, removendo coluna _id
-        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
+        df = pd.DataFrame(docs).drop(columns=['_id',''], errors='ignore')
         if 'json_documents' in df.columns:
             df['json_documents'] = df['json_documents'].fillna('').astype(str)
         return df
@@ -109,4 +152,28 @@ for i, row in ativos_total.iterrows():
 
 st.title("Vagões Retidos")
 
-df_ret = function_to_get_data(MONGO_URI,DB_NAME,"CadastroVagoes_full")
+df_ret = function_to_get_data(MONGO_URI,DB_NAME,"z1568_Liberacoes_Retencoes_full", pipeline2)
+df_1 = function_to_get_data(MONGO_URI,DB_NAME,"z1568_Liberacoes_Retencoes_full", pipeline2)
+df_1 = df_1.drop(['dt_fim_trated', 'DATA_ABERTURA_INT','dt_modificacao_trated'], axis=1)
+df5=df_1
+#df3 = df_ret.groupby("RETENCAO")["RETENCAO"].value_counts()
+df4 = df_ret["RETENCAO"].value_counts().get('RETIDO',0)
+df_1 = df_1[(df_1['dt_inicio_trated'] >= '2023-01-01')]
+df_1['mes'] = df_1['dt_inicio_trated'].dt.to_period('M')
+df_1 = df_1.groupby(["mes"],as_index=False)["mes"].value_counts()
+df_1['mes'] = df_1['mes'].dt.to_timestamp()
+df_ret = df_ret[(df_ret['RETENCAO'] == 'RETIDO') & (df_ret['DISPONIBILIDADE'] != 'RETIDO')]
+st.dataframe(df_ret)
+#st.dataframe(df3)
+st.metric(value = df4, label='Vagões Retidos')
+#st.dataframe(df_1)
+st.title("Vagões Retidos Por Mês")
+st.line_chart(df_1, x='mes', y='count', x_label="Mês", y_label="Total")
+df5['mes'] = df5['dt_inicio_trated'].dt.to_period('M')
+df5['mes'] = df5['mes'].dt.to_timestamp()
+df5 = df5[(df5['dt_inicio_trated'] >= '2023-01-01')]
+df5 = df5.groupby(["mes", "GRUPO_AVARIA"],as_index=False)["mes"].value_counts()
+
+st.dataframe(df5)
+st.line_chart(df5, x='mes', y= 'count', color='GRUPO_AVARIA')
+st.bar_chart(df5,x='mes', y= 'count', color='GRUPO_AVARIA', stack=False )

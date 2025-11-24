@@ -5,6 +5,7 @@ import plotly.express as px
 from numpy.random import default_rng as rng
 from streamlit_plotly_events import plotly_events
 
+
 st.set_page_config(layout="wide")
 st.title("Dashboard com Crossfilter (Plotly)")
 
@@ -68,12 +69,12 @@ with col2:
     fig_line = px.line(df_f, x="data", y="valor", color="categoria")
     if (st.session_state.cats != [] and  st.session_state.cats[0] == 'C' ):
         st.session_state.cats = []
-        st.switch_page("pages/1-📊Graph.py")
+        st.switch_page("pages/1-📊Consulta Master.py")
         
         #pg.run()
     if (st.session_state.cats != [] and st.session_state.cats[0] == 'B'):
         st.session_state.cats = []
-        st.switch_page("pages/3-🤖Chat Bot.py")
+        st.switch_page("pages/2 - 🤖Chat Bot.py")
 
 df2 = pd.DataFrame(
     rng(0).standard_normal((12, 5)), columns=["a", "b", "c", "d", "e"]
