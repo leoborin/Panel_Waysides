@@ -889,7 +889,6 @@ if st.button("Executar função"):
 # -------------------------------------------------------------------Regressão
     # df_trkv_trated, r2, mae, rmse = regrecao()
 
-
     def plot_Waysides():
 
         fig_trkv = go.Figure()
@@ -1012,8 +1011,9 @@ if st.button("Executar função"):
     plot_Waysides()
 
 # ------------------------
-    df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
-        'NUMDOC', 'DH_CRIACAO', 'DHFIM', 'DESCRICAO_TAREFA', 'Status', 'DESCRICAO_ECP', 'Sistema', 'OBS_ATUAL']]
+    if not df_SAT_TAREFAS_full.empty:
+        df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
+            'NUMDOC', 'DH_CRIACAO', 'DHFIM', 'DESCRICAO_TAREFA', 'Status', 'DESCRICAO_ECP', 'Sistema', 'OBS_ATUAL']]
 
     def plotar_TELA_SAT(df_SAT_TAREFAS_full):
 
