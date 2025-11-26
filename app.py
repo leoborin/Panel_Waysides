@@ -1,11 +1,5 @@
 import streamlit as st
-from pymongo import MongoClient
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
-import streamlit.components.v1 as components
-from streamlit_javascript import st_javascript
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
