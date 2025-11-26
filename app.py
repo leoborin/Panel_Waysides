@@ -109,7 +109,7 @@ with cols[2]:
     st.markdown("""
 <a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Saude_de_Frota" target="_self">
 <button id="consulta-btn" class="card-button">
-<h3>🎯Saude_de_Frota</h3>
+<h3>🎯Saude de Frota</h3>
 <p>Consulte a Saúde da frota da Malha Norte</p>
 </button>
 </a>
