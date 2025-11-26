@@ -14,3 +14,4 @@ logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 st.image("assets/vg666.png", width=100)
 st.title("RailCenter - Inteligência de Dados")
+
