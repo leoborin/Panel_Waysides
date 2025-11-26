@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from numpy.random import default_rng as rng
-from streamlit_plotly_events import plotly_events
+#from streamlit_plotly_events import plotly_events
 
 
 st.set_page_config(layout="wide")
