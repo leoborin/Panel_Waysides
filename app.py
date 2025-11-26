@@ -57,6 +57,25 @@ st.markdown("""
     transform: scale(1.02);
     box-shadow: 0px 8px 16px rgba(0,0,0,0.3);
 }
+
+/* Tag no canto superior direito */
+.tag {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+.tag-ativo {
+    background-color: #28a745; /* Verde */
+}
+.tag-breve {
+    background-color: #6c757d; /* Cinza */
+}
+
 </style>""", unsafe_allow_html=True)
 
 
@@ -75,6 +94,7 @@ with cols[0]:
 <button id="consulta-btn" class="card-button">
 <h3>Consulta Master</h3>
 <p>Realize uma pesquisa detalhada de cada Ativo</p>
+<div class="tag tag-ativo">Ativo</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -84,6 +104,7 @@ with cols[0]:
 <button id="consulta-btn" class="card-button">
 <h3>Gestão de Ativos</h3>
 <p>Detalhes da Gestão de Ativos</p>
+<div class="tag tag-breve">Em Dev.</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -93,6 +114,7 @@ with cols[1]:
 <button id="consulta-btn" class="card-button">
 <h3>🤖 Chat Bot</h3>
 <p>Consulte nossa base de dados conversando com chatbot</p>
+<div class="tag tag-ativo">Ativo</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -102,6 +124,7 @@ with cols[1]:
 <button id="consulta-btn" class="card-button">
 <h3>Consulta Master</h3>
 <p>Realize uma pesquisa detalhada de cada Ativo</p>
+<div class="tag tag-ativo">Ativo</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -111,6 +134,7 @@ with cols[2]:
 <button id="consulta-btn" class="card-button">
 <h3>🎯Saude de Frota</h3>
 <p>Consulte a Saúde da frota da Malha Norte</p>
+<div class="tag tag-breve">Em Dev.</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -120,6 +144,7 @@ with cols[2]:
 <button id="consulta-btn" class="card-button">
 <h3>Consulta Master</h3>
 <p>Realize uma pesquisa detalhada de cada Ativo</p>
+<div class="tag tag-ativo">Ativo</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
