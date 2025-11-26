@@ -25,6 +25,8 @@ st.header("Consulta Completa Vagões v0 - Visão Micro")
 
 # functions Begin --------------------------------------------------
 # main def
+
+
 def busca_dados(vagao):
     def busca_z1568(vagao):
         # Conexão com o MongoDB
@@ -158,6 +160,57 @@ def busca_dados(vagao):
 
         return df
 
+    def busca_Tela164(vagao):
+        from pymongo import MongoClient
+        import pandas as pd
+
+        # Garantir que o vagao é string (Mongo armazena como string)
+        vagao = str(vagao)
+
+        # Conexão com o MongoDB
+        client = MongoClient(MONGO_URI)
+
+        # Filtro usando o parâmetro recebido
+        filter_query = {'VAGAO': re.compile(f"{vagao}")}
+
+        # Consulta com limit = 1
+        cursor = client[DB_NAME]['tela164_full'].find(filter_query, limit=1)
+
+        # Converter cursor para DataFrame
+        df = pd.DataFrame(list(cursor))
+
+        # Remover coluna _id se existir
+        if '_id' in df.columns:
+            df.drop('_id', axis=1, inplace=True)
+
+        return df
+
+    def busca_SAT_TAREFAS_full(vagao):
+        from pymongo import MongoClient
+        import pandas as pd
+
+        # Garantir que o vagao é string (Mongo armazena como string)
+        vagao = str(vagao)
+
+        # Conexão com o MongoDB
+        client = MongoClient(MONGO_URI)
+
+        # Filtro usando o parâmetro recebido
+        filter_query = {'EQUNR': re.compile(f"{vagao}")}
+
+        # Consulta com limit = 1
+        cursor = client[DB_NAME]['SAT_TAREFAS_full'].find(
+            filter_query)
+
+        # Converter cursor para DataFrame
+        df = pd.DataFrame(list(cursor))
+
+        # Remover coluna _id se existir
+        if '_id' in df.columns:
+            df.drop('_id', axis=1, inplace=True)
+
+        return df
+
     def medir_tempo(func, *args, **kwargs):
         inicio = time.time()
         resultado = func(*args, **kwargs)
@@ -171,7 +224,9 @@ def busca_dados(vagao):
             busca_z369,
             busca_TRKV,
             busca_z851,
-            busca_z1568
+            busca_z1568,
+            busca_Tela164,
+            busca_SAT_TAREFAS_full
         ]
 
         resultados = {}
@@ -199,15 +254,20 @@ def busca_dados(vagao):
     df_trkv = result["busca_TRKV"]
     df_z851 = result["busca_z851"]
     df_z1568 = result["busca_z1568"]
+    df_164 = result["busca_Tela164"]
+    df_SAT_TAREFAS_full = result["busca_SAT_TAREFAS_full"]
 
     print(len(df_WCM))
     print(len(df_z369))
     print(len(df_trkv))
     print(len(df_z851))
     print(len(df_z1568))
+    print(len(df_164))
+    print(len(df_SAT_TAREFAS_full))
     st.success("Função executada com sucesso!")
 
-    return df_WCM, df_z369, df_trkv, df_z851, df_z1568
+    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full
+
 
 def tratar_dfs(df_WCM, df_z369, df_trkv):
 
@@ -220,7 +280,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
 
         # Colunas de impacto
         colunas_impacto = ['A#L_1', 'A#L_2', 'A#R_1',
-                            'A#R_2', 'B#L_1', 'B#L_2', 'B#R_1']
+                           'A#R_2', 'B#L_1', 'B#L_2', 'B#R_1']
 
         # Substituir valores 0 por NaN
         df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(
@@ -279,7 +339,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
         )
 
         df_z369_trated = df_z369[['NOTA', 'ATIVO', 'TP NOTA', 'STATUS',
-                                    'dt_abertura_trated', 'dt_fechamento_trated', 'Texto_Completo']]
+                                  'dt_abertura_trated', 'dt_fechamento_trated', 'Texto_Completo']]
 
         df_timeline_z369 = df_z369_trated.copy()
 
@@ -297,6 +357,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
     df_timeline_z369, df_z369_trated = tratar_z369(df_z369)
 
     return df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated
+
 
 def inserir_wcm_hist(df_wcm_trated):
     df_wcm_trated_histgeral = df_wcm_trated.copy()
@@ -323,6 +384,7 @@ def inserir_wcm_hist(df_wcm_trated):
 
     return df_wcm_total
 
+
 def inserir_trkv_hist(df_trkv_trated):
     df_trkv_trated_histgeral = df_trkv_trated.copy()
     # print(df_trkv_trated)
@@ -347,6 +409,7 @@ def inserir_trkv_hist(df_trkv_trated):
         'Evento', 'INICIO', 'FIM', 'Texto_Completo', 'Tipo_Evento']]
 
     return df_trkv_total
+
 
 def inserir_z1568(df_z1568):
 
@@ -380,8 +443,10 @@ def inserir_z1568(df_z1568):
 
     return df_timeline_z1568
 
+
 def minha_funcao(texto):
     st.write(f"Você digitou: {texto}")
+
 
 def tratar_entrada(codigo: str) -> str:
     # Mantém apenas dígitos
@@ -392,6 +457,7 @@ def tratar_entrada(codigo: str) -> str:
 
     # Garante que não retorne vazio (ex: "000HPT")
     return sem_zeros if sem_zeros else "0"
+
 
 # functions End ----------------------------------------------------
 # Tela -----------------------
@@ -405,7 +471,7 @@ if st.button("Executar função"):
         vg_entrada = tratar_entrada(vg_entrada)
         minha_funcao(vg_entrada)
 
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568 = busca_dados(
+        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full = busca_dados(
             vg_entrada)
 
         df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated = tratar_dfs(
@@ -516,15 +582,47 @@ if st.button("Executar função"):
                             unsafe_allow_html=True
                         )
 
-            st.subheader("Linha do Tempo")
-
         resumo_z1568()
 # -------------------------------------------------------------------RESUMO
+
+        def resumo_tela164():
+
+            dados = df_164.iloc[0]
+
+            with st.container():
+                st.write("---")
+                st.markdown(f"### Dados atuais do vagão")
+                st.write(f"**Data Atualização:** {dados['DT_CARGA']}")
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+
+                    # st.write(f"**Vagão:** {dados['vagão']}")
+                    st.write(f"**Local:** {dados['LOCAL']}")
+                    st.write(f"**Trem:** {dados['TREM']}")
+                    st.write(f"**OS:** {dados['NR_OS']}")
+
+                with col2:
+                    st.write(f"**Código da Linha:** {dados['COD_LINHA']}")
+                    st.write(f"**Recomendação:** {dados['DESC_RECOMENDACAO']}")
+                    st.write(f"**Lotação:** {dados['DESC_LOTACAO']}")
+
+                with col3:
+                    st.write(f"**Situação:** {dados['DESC_SITUACAO']}")
+                    st.write(f"**Mercadoria:** {dados['DSC_MERCADORIA']}")
+                    st.write(f"**TU:** {dados['TU']}")
+
+                st.write("---")
+
+        resumo_tela164()
 
         def plotar_gaph_resumo():
             import plotly.express as px
             import pandas as pd
             import streamlit as st
+
+            st.subheader("Linha do Tempo")
 
             df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
 
@@ -536,7 +634,7 @@ if st.button("Executar função"):
             print(df_z1568_timeline)
 
             df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,  df_trkv_timeline]
-                                    )
+                                 )
 
             df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
                 lambda x: "" if x in ["WCM", "trkv"] else x
@@ -791,7 +889,6 @@ if st.button("Executar função"):
 # -------------------------------------------------------------------Regressão
     # df_trkv_trated, r2, mae, rmse = regrecao()
 
-
     def plot_Waysides():
 
         fig_trkv = go.Figure()
@@ -912,6 +1009,227 @@ if st.button("Executar função"):
             # Plota gráfico de linha
 # graficos WCM e TRKV
     plot_Waysides()
+
+# ------------------------
+    if not df_SAT_TAREFAS_full.empty:
+        df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
+            'NUMDOC', 'DH_CRIACAO', 'DHFIM', 'DESCRICAO_TAREFA', 'Status', 'DESCRICAO_ECP', 'Sistema', 'OBS_ATUAL']]
+
+    def plotar_TELA_SAT(df_SAT_TAREFAS_full):
+
+        import streamlit as st
+        import streamlit.components.v1 as components
+        import pandas as pd
+        import json
+
+        st.write("---")
+        st.markdown(f"### Tarefas Realizadas em Manutenção")
+
+        # Converter DataFrame para lista de dicionários
+        dados = df_SAT_TAREFAS_full.to_dict(orient="records")
+
+        # Converter Timestamp para string
+        for row in dados:
+            for k, v in row.items():
+                if isinstance(v, pd.Timestamp):
+                    row[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+
+        html_code = f"""
+        <html>
+        <head>
+        <meta charset="UTF-8">
+
+        <style>
+
+            #root, .block-container, .main {{
+                padding: 0 !important;
+                margin: 0 !important;
+            }}
+            .block-container {{
+                max-width: 100% !important;
+            }}
+
+            /* Remover padding lateral do Streamlit */
+            .main .block-container {{
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }}
+
+            /* Container em largura total */
+            .container {{
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 20px !important;
+            }}
+
+            body {{
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background-color: #ffffff;
+            }}
+
+            /* SEARCH BOX FIXA */
+            .search-box {{
+                margin: 0 0 15px 0;
+                display: flex;
+                border: 1px solid #ddd;
+                padding: 12px 18px;
+                border-radius: 25px;
+                background: #ffffff !important;
+                box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+
+                position: sticky;
+                top: 0;
+                z-index: 20;
+            }}
+
+            .search-input {{
+                border: none;
+                background: none;
+                width: 100%;
+                outline: none;
+                font-size: 16px;
+            }}
+
+            /* TABELA ESTILO NOTION + GOOGLE */
+            table {{
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0 4px;
+                font-size: 14px;
+            }}
+
+            thead tr {{
+                background: #f3f3f3;
+                border-radius: 6px;
+
+                position: sticky;
+                top: 60px; /* Alinhar com search-box */
+                z-index: 10;
+            }}
+
+            th {{
+                text-align: left;
+                padding: 10px 12px;
+                font-weight: 600;
+                color: #333;
+                border-bottom: 1px solid #e5e5e5;
+            }}
+
+            tbody tr {{
+                background: #fff;
+                transition: 0.15s ease-in-out;
+            }}
+
+            tbody tr:hover {{
+                background: #f7faff;
+                box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+            }}
+
+            td {{
+                padding: 10px 12px;
+                color: #333;
+                border-bottom: 1px solid #f1f1f1;
+                text-align: left;
+            }}
+
+            tbody tr:nth-child(even) {{
+                background: #fafafa;
+            }}
+
+            .info-linhas {{
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
+            }}
+
+        </style>
+
+        </head>
+
+        <body>
+
+        <div class="container">
+
+            <div class="search-box">
+                <input class="search-input" id="searchInput" placeholder="Pesquisar por DESCRICAO_TAREFA..." />
+            </div>
+
+            <div class="info-linhas" id="infoLinhas"></div>
+
+            <table>
+                <thead>
+                    <tr id="headerRow"></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+
+        </div>
+
+        <script>
+
+            const dados = {json.dumps(dados, ensure_ascii=False)};
+            const colunas = dados.length > 0 ? Object.keys(dados[0]) : [];
+
+            // Montar cabeçalho
+            function renderHeader() {{
+                const headerRow = document.getElementById("headerRow");
+                headerRow.innerHTML = "";
+                colunas.forEach(col => {{
+                    const th = document.createElement("th");
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                }});
+            }}
+
+            // Montar tabela
+            function renderTabela(linhas) {{
+                const tbody = document.getElementById("tableBody");
+                const info = document.getElementById("infoLinhas");
+                tbody.innerHTML = "";
+
+                linhas.forEach(row => {{
+                    const tr = document.createElement("tr");
+                    colunas.forEach(col => {{
+                        const td = document.createElement("td");
+                        td.textContent = row[col] ?? "";
+                        tr.appendChild(td);
+                    }});
+                    tbody.appendChild(tr);
+                }});
+
+                info.textContent = linhas.length + " linha(s) exibida(s)";
+            }}
+
+            // Render inicial
+            renderHeader();
+            renderTabela(dados);
+
+            // Filtro em tempo real
+            document.getElementById("searchInput").addEventListener("input", function() {{
+                const q = this.value.toLowerCase();
+
+                const filtrado = dados.filter(row => {{
+                    const texto = String(row["DESCRICAO_TAREFA"] || "").toLowerCase();
+                    return texto.includes(q);
+                }});
+
+                renderTabela(filtrado);
+            }});
+
+        </script>
+
+        </body>
+        </html>
+        """
+
+        components.html(html_code, height=900, scrolling=True)
+
+    plotar_TELA_SAT(df_SAT_TAREFAS_full)
+# ------------------------
+
+    st.write("Dados df_164")
+    st.dataframe(df_164)
     st.write("Dados z369")
     st.dataframe(df_z369)
     st.write("Dados WCM")
@@ -922,5 +1240,4 @@ if st.button("Executar função"):
     st.dataframe(df_z851)
     st.write("Dados z1568")
     st.dataframe(df_z1568)
-
 # Tela -----------------------
