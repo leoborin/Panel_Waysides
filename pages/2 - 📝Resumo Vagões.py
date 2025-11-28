@@ -628,22 +628,6 @@ else:
     df_filtrado = df_base_concatenada
 
 
-# =============================
-# Exibir tabela
-# =============================
-# st.markdown("### Dados Concatenados e Tratados")
-# st.dataframe(
-#     df_filtrado,
-#     use_container_width=True,
-#     hide_index=True,
-#     height=600
-# )
-
-# st.write(f"Total de registros: **{df_filtrado.shape[0]}**")
-
-# Supondo que df_filtrado já existe e tem coluna 'EQUNR'
-
-
 def create_EQUNR_link(equnr):
     """Cria link com o valor da EQUNR"""
     return f"/Consulta_Master?eqnr={equnr}"
