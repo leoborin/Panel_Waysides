@@ -11,6 +11,15 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import streamlit as st
+
+eqnr = st.query_params.get("eqnr")
+
+# st.write(f"EQNR: '{eqnr}'")
+
+# st.caption(f"🔗 [Voltar à lista principal](/1_Dados_Concatenados)")
+
+
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
@@ -79,27 +88,27 @@ def busca_dados(vagao):
         # Pipeline de agregação
         pipeline = [
             {
-                '$match': {
-                    'json_documents.json_Identificação do veículo': {
-                        '$regex': vagao_str,
-                        '$options': 'i'
+                "$match": {
+                    "json_documents.json_Identificação do veículo": {
+                        "$exists": True,
+                        "$ne": ""
                     }
                 }
             },
             {
-                '$project': {
-                    'json_documents': 1,
-                    '_id': 0
+                "$project": {
+                    "json_documents": 1,
+                    "_id": 0
                 }
             },
             {
-                '$unwind': '$json_documents'
+                "$unwind": "$json_documents"
             },
             {
-                '$match': {
-                    'json_documents.json_Identificação do veículo': {
-                        '$regex': vagao_str,
-                        '$options': 'i'
+                "$match": {
+                    "json_documents.json_Identificação do veículo": {
+                        "$exists": True,
+                        "$ne": ""
                     }
                 }
             }
@@ -257,13 +266,13 @@ def busca_dados(vagao):
     df_164 = result["busca_Tela164"]
     df_SAT_TAREFAS_full = result["busca_SAT_TAREFAS_full"]
 
-    print(len(df_WCM))
-    print(len(df_z369))
-    print(len(df_trkv))
-    print(len(df_z851))
-    print(len(df_z1568))
-    print(len(df_164))
-    print(len(df_SAT_TAREFAS_full))
+    print("df_WCM:", len(df_WCM))
+    print("df_z369:", len(df_z369))
+    print("df_trkv:", len(df_trkv))
+    print("df_z851:", len(df_z851))
+    print("df_z1568:", len(df_z1568))
+    print("df_164:", len(df_164))
+    print("df_SAT_TAREFAS_full:", len(df_SAT_TAREFAS_full))
     st.success("Função executada com sucesso!")
 
     return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full
@@ -303,8 +312,11 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
             2)
 
         return df_trkv_max[['Data', 'TRKV_MAX_Cunha']]
-
-    df_trkv_trated = tratar_trkv(df_trkv)
+    try:
+        df_trkv_trated = tratar_trkv(df_trkv)
+    except Exception as e:
+        print(f"Erro ao tratar df_trkv: {e}")
+        df_trkv_trated = pd.DataFrame()
 
     def tratar_WCM(df_WCM):
         # Garantir que o campo de tempo esteja em formato datetime
@@ -324,7 +336,11 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
             .sort_values(by='Data', ascending=True)
         )
         return df_WCM_max
-    df_wcm_trated = tratar_WCM(df_WCM)
+    try:
+        df_wcm_trated = tratar_WCM(df_WCM)
+    except Exception as e:
+        print(f"Erro ao tratar df_trkv: {e}")
+        df_wcm_trated = pd.DataFrame()
 
     def tratar_z369(df_z369):
 
@@ -353,8 +369,12 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
             df_timeline_z369['Evento'].astype(str)
 
         return df_timeline_z369, df_z369_trated
-
-    df_timeline_z369, df_z369_trated = tratar_z369(df_z369)
+    try:
+        df_timeline_z369, df_z369_trated = tratar_z369(df_z369)
+    except Exception as e:
+        print(f"Erro ao tratar df_trkv: {e}")
+        df_timeline_z369 = pd.DataFrame()
+        df_z369_trated = pd.DataFrame()
 
     return df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated
 
@@ -462,7 +482,7 @@ def tratar_entrada(codigo: str) -> str:
 # functions End ----------------------------------------------------
 # Tela -----------------------
 # Campo de entrada de texto
-vg_entrada = st.text_input("Digite algo:")
+vg_entrada = st.text_input("Digite o vagão:", value=eqnr)
 
 # Botão que executa a função
 if st.button("Executar função"):
@@ -624,17 +644,32 @@ if st.button("Executar função"):
 
             st.subheader("Linha do Tempo")
 
-            df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
+            try:
+                df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
+            except Exception as e:
+                print(f"Erro : {e}")
+                df_wcm_timeline = pd.DataFrame()
 
-            df_trkv_timeline = inserir_trkv_hist(df_trkv_trated)
+            try:
+                df_trkv_timeline = inserir_trkv_hist(df_trkv_trated)
+            except Exception as e:
+                print(f"Erro : {e}")
+                df_trkv_timeline = pd.DataFrame()
 
-            df_z1568_timeline = inserir_z1568(
-                df_z1568).reset_index(drop=True)
+            try:
+                df_z1568_timeline = inserir_z1568(
+                    df_z1568).reset_index(drop=True)
+            except Exception as e:
+                print(f"Erro : {e}")
+                df_z1568_timeline = pd.DataFrame()
 
-            print(df_z1568_timeline)
+            # print(df_z1568_timeline)
+
+            print("validation")
 
             df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,  df_trkv_timeline]
                                  )
+            print(df_final)
 
             df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
                 lambda x: "" if x in ["WCM", "trkv"] else x
@@ -779,236 +814,241 @@ if st.button("Executar função"):
 
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
-    import numpy as np
-    import pandas as pd
-    from math import sqrt
+    print("validation2")
+    try:
+        import numpy as np
+        import pandas as pd
+        from math import sqrt
 
-    def projetar_regressao(df, slope, intercept, dias_a_frente=30):
-        # Converte datas para inteiro ordinal
-        x = pd.to_datetime(df["Data"], errors="coerce").map(
-            pd.Timestamp.toordinal).values
-        x = x[~np.isnan(x)]  # remove valores inválidos
+        def projetar_regressao(df, slope, intercept, dias_a_frente=30):
+            # Converte datas para inteiro ordinal
+            x = pd.to_datetime(df["Data"], errors="coerce").map(
+                pd.Timestamp.toordinal).values
+            x = x[~np.isnan(x)]  # remove valores inválidos
 
-        ultimo_x = x[-1]
+            ultimo_x = x[-1]
 
-        # Cria novos pontos no futuro
-        novos_x = np.array(
-            [ultimo_x + i for i in range(1, dias_a_frente + 1)])
+            # Cria novos pontos no futuro
+            novos_x = np.array(
+                [ultimo_x + i for i in range(1, dias_a_frente + 1)])
 
-        # Converte de volta para datas
-        novas_datas = [pd.Timestamp.fromordinal(int(v)) for v in novos_x]
+            # Converte de volta para datas
+            novas_datas = [pd.Timestamp.fromordinal(int(v)) for v in novos_x]
 
-        # Predição futura
-        novos_y_pred = slope * novos_x + intercept
+            # Predição futura
+            novos_y_pred = slope * novos_x + intercept
 
-        # Retorna um dataframe organizado
-        return pd.DataFrame({
-            "Data": novas_datas,
-            "y_pred": novos_y_pred
-        })
+            # Retorna um dataframe organizado
+            return pd.DataFrame({
+                "Data": novas_datas,
+                "y_pred": novos_y_pred
+            })
 
-    def regressao_linear_manual(df, col_x="Data", col_y="TRKV_MAX_Cunha"):
-        # ============================
-        # 1) Preparar dados
-        # ============================
-        x_all = pd.to_datetime(df[col_x], errors="coerce").map(
-            pd.Timestamp.toordinal).values
-        y_all = df[col_y].values
+        def regressao_linear_manual(df, col_x="Data", col_y="TRKV_MAX_Cunha"):
+            # ============================
+            # 1) Preparar dados
+            # ============================
+            x_all = pd.to_datetime(df[col_x], errors="coerce").map(
+                pd.Timestamp.toordinal).values
+            y_all = df[col_y].values
 
-        # Máscara para limpar NaN
-        mask = ~np.isnan(x_all) & ~np.isnan(y_all)
-        x = x_all[mask]
-        y = y_all[mask]
+            # Máscara para limpar NaN
+            mask = ~np.isnan(x_all) & ~np.isnan(y_all)
+            x = x_all[mask]
+            y = y_all[mask]
 
-        n = len(x)
+            n = len(x)
 
-        # ============================
-        # 2) Somatórios
-        # ============================
-        sum_x = np.sum(x)
-        sum_y = np.sum(y)
-        sum_xy = np.sum(x * y)
-        sum_x2 = np.sum(x * x)
+            # ============================
+            # 2) Somatórios
+            # ============================
+            sum_x = np.sum(x)
+            sum_y = np.sum(y)
+            sum_xy = np.sum(x * y)
+            sum_x2 = np.sum(x * x)
 
-        # ============================
-        # 3) Cálculo dos parâmetros
-        # ============================
-        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
-        intercept = (sum_y - slope * sum_x) / n
+            # ============================
+            # 3) Cálculo dos parâmetros
+            # ============================
+            slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
+            intercept = (sum_y - slope * sum_x) / n
 
-        # ============================
-        # 4) Predições
-        # ============================
-        # y_pred → somente dados válidos (para cálculo das métricas)
-        y_pred = slope * x + intercept
+            # ============================
+            # 4) Predições
+            # ============================
+            # y_pred → somente dados válidos (para cálculo das métricas)
+            y_pred = slope * x + intercept
 
-        # y_pred_full → predição para TODAS as linhas originais
-        y_pred_full = slope * x_all + intercept
+            # y_pred_full → predição para TODAS as linhas originais
+            y_pred_full = slope * x_all + intercept
 
-        # ============================
-        # 5) Métricas
-        # ============================
-        rmse = sqrt(np.mean((y - y_pred)**2))
-        mae = np.mean(np.abs(y - y_pred))
-        ss_res = np.sum((y - y_pred)**2)
-        ss_tot = np.sum((y - np.mean(y))**2)
-        r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0
+            # ============================
+            # 5) Métricas
+            # ============================
+            rmse = sqrt(np.mean((y - y_pred)**2))
+            mae = np.mean(np.abs(y - y_pred))
+            ss_res = np.sum((y - y_pred)**2)
+            ss_tot = np.sum((y - np.mean(y))**2)
+            r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0
 
-        # ============================
-        # 6) Retorno
-        # ============================
-        return {
-            "slope": slope,
-            "intercept": intercept,
-            "rmse": rmse,
-            "mae": mae,
-            "r2": r2,
-            "y_pred": y_pred,            # somente dados válidos
-            "y_pred_full": y_pred_full   # TODAS as linhas (para plot)
-        }
+            # ============================
+            # 6) Retorno
+            # ============================
+            return {
+                "slope": slope,
+                "intercept": intercept,
+                "rmse": rmse,
+                "mae": mae,
+                "r2": r2,
+                "y_pred": y_pred,            # somente dados válidos
+                "y_pred_full": y_pred_full   # TODAS as linhas (para plot)
+            }
 
-    resultado = regressao_linear_manual(df_trkv_trated)
+        resultado = regressao_linear_manual(df_trkv_trated)
 
-    slope = resultado["slope"]
-    intercept = resultado["intercept"]
-    r2 = resultado["r2"]
-    rmse = resultado["rmse"]
-    mae = resultado["mae"]
-    y_pred = resultado["y_pred_full"]
+        slope = resultado["slope"]
+        intercept = resultado["intercept"]
+        r2 = resultado["r2"]
+        rmse = resultado["rmse"]
+        mae = resultado["mae"]
+        y_pred = resultado["y_pred_full"]
 
-    df_projecao = projetar_regressao(
-        df_trkv_trated, slope, intercept, dias_a_frente=30)
+        df_projecao = projetar_regressao(
+            df_trkv_trated, slope, intercept, dias_a_frente=30)
 
-    print(f"Slope: {slope}")
-    print(f"Intercept: {intercept}")
-    print(f"R²: {r2}")
-    print(f"RMSE: {rmse}")
-    print(f"MAE: {mae}")
+        print(f"Slope: {slope}")
+        print(f"Intercept: {intercept}")
+        print(f"R²: {r2}")
+        print(f"RMSE: {rmse}")
+        print(f"MAE: {mae}")
 
 
 # -------------------------------------------------------------------Regressão
     # df_trkv_trated, r2, mae, rmse = regrecao()
 
-    def plot_Waysides():
+        def plot_Waysides():
 
-        fig_trkv = go.Figure()
+            fig_trkv = go.Figure()
 
-        # -------------------------
-        # 1. Série real
-        # -------------------------
-        fig_trkv.add_trace(go.Scatter(
-            x=df_trkv_trated["Data"],
-            y=df_trkv_trated["TRKV_MAX_Cunha"],
-            mode="lines+markers+text",
-            text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
-            textposition="top center",
-            name="TRKV_MAX_Cunha",
-            marker=dict(size=7),
-            line=dict(width=2)
-        ))
+            # -------------------------
+            # 1. Série real
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=df_trkv_trated["TRKV_MAX_Cunha"],
+                mode="lines+markers+text",
+                text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
+                textposition="top center",
+                name="TRKV_MAX_Cunha",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
 
-        # -------------------------
-        # 2. Linha de regressão real
-        # -------------------------
-        fig_trkv.add_trace(go.Scatter(
-            x=df_trkv_trated["Data"],
-            y=y_pred,
-            mode="lines",
-            line=dict(width=2, dash="dash", color="#A52BE3"),
-            name=f"Regressão Linear (slope={slope:.4f})"
-        ))
+            # -------------------------
+            # 2. Linha de regressão real
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=y_pred,
+                mode="lines",
+                line=dict(width=2, dash="dash", color="#A52BE3"),
+                name=f"Regressão Linear (slope={slope:.4f})"
+            ))
 
-        # -------------------------
-        # 3. PROJEÇÃO FUTURA
-        # -------------------------
-        fig_trkv.add_trace(go.Scatter(
-            x=df_projecao["Data"],
-            y=df_projecao["y_pred"],
-            mode="lines",
-            line=dict(width=2, dash="dot", color="#5A5555"),
-            name="Projeção Futura (+30 dias)"
-        ))
+            # -------------------------
+            # 3. PROJEÇÃO FUTURA
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_projecao["Data"],
+                y=df_projecao["y_pred"],
+                mode="lines",
+                line=dict(width=2, dash="dot", color="#5A5555"),
+                name="Projeção Futura (+30 dias)"
+            ))
 
-        # Layout
-        fig_trkv.update_layout(
-            title="TRKV - Regressão + Projeção Futura",
-            xaxis_title="Data",
-            yaxis_title="Valor",
-            template="plotly_white",
-            height=380,
-        )
+            # Layout
+            fig_trkv.update_layout(
+                title="TRKV - Regressão + Projeção Futura",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380,
+            )
 
-        # Range eixo Y
-        fig_trkv.update_yaxes(range=[10, 70])
+            # Range eixo Y
+            fig_trkv.update_yaxes(range=[10, 70])
 
-        # =========================
-        # WCM
-        # =========================
+            # =========================
+            # WCM
+            # =========================
 
-        df_wcm_trated["Alarme"] = 200
+            df_wcm_trated["Alarme"] = 200
 
-        fig_wcm = go.Figure()
+            fig_wcm = go.Figure()
 
-        # Curva principal
-        fig_wcm.add_trace(go.Scatter(
-            x=df_wcm_trated["Data"],
-            y=df_wcm_trated["Maior_Impacto_kN"],
-            mode="lines+markers+text",
-            text=df_wcm_trated["Maior_Impacto_kN"].round(1).astype(str),
-            textposition="top center",
-            name="Maior_Impacto_kN",
-            marker=dict(size=7),
-            line=dict(width=2)
-        ))
+            # Curva principal
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Maior_Impacto_kN"],
+                mode="lines+markers+text",
+                text=df_wcm_trated["Maior_Impacto_kN"].round(1).astype(str),
+                textposition="top center",
+                name="Maior_Impacto_kN",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
 
-        # Linha de limite
-        fig_wcm.add_trace(go.Scatter(
-            x=df_wcm_trated["Data"],
-            y=df_wcm_trated["Alarme"],
-            mode="lines",
-            name="Alarme 200 kN",
-            line=dict(color="red", width=2, dash="dash")
-        ))
+            # Linha de limite
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Alarme"],
+                mode="lines",
+                name="Alarme 200 kN",
+                line=dict(color="red", width=2, dash="dash")
+            ))
 
-        fig_wcm.update_layout(
-            title="wcm",
-            xaxis_title="Data",
-            yaxis_title="Valor",
-            template="plotly_white",
-            height=380
-        )
+            fig_wcm.update_layout(
+                title="wcm",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380
+            )
 
-        fig_wcm.update_yaxes(range=[0, 300])
-        # =========================
-        # STREAMLIT LAYOUT
-        # =========================
+            fig_wcm.update_yaxes(range=[0, 300])
+            # =========================
+            # STREAMLIT LAYOUT
+            # =========================
 
-        col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2)
 
-        with col1:
-            st.subheader("TRKV Cunha Máximo Passagem (mm)")
-            st.plotly_chart(fig_trkv, use_container_width=True)
-            st.markdown(f"""
-            **R²:** `{r2:.4f}`  
-            **MAE:** `{mae:.4f}`  
-            **RMSE:** `{rmse:.4f}`  
-            """)
-            st.dataframe(df_trkv_trated)
+            with col1:
+                st.subheader("TRKV Cunha Máximo Passagem (mm)")
+                st.plotly_chart(fig_trkv, use_container_width=True)
+                st.markdown(f"""
+                **R²:** `{r2:.4f}`  
+                **MAE:** `{mae:.4f}`  
+                **RMSE:** `{rmse:.4f}`  
+                """)
+                st.dataframe(df_trkv_trated)
 
-        with col2:
+            with col2:
 
-            st.subheader("WCM Maior Impacto (kN)")
-            st.plotly_chart(fig_wcm, use_container_width=True)
-            st.markdown(f"""
-            **Alarme Baixo:** `-`   
-            **Alarme Médio:** `-`   
-            **Alarme Alto:** `-`  
-            """)
-            st.dataframe(df_wcm_trated)
+                st.subheader("WCM Maior Impacto (kN)")
+                st.plotly_chart(fig_wcm, use_container_width=True)
+                st.markdown(f"""
+                **Alarme Baixo:** `-`   
+                **Alarme Médio:** `-`   
+                **Alarme Alto:** `-`  
+                """)
+                st.dataframe(df_wcm_trated)
 
-            # Plota gráfico de linha
-# graficos WCM e TRKV
-    plot_Waysides()
+                # Plota gráfico de linha
+    # graficos WCM e TRKV
+        plot_Waysides()
+
+    except Exception as e:
+        print(f"Erro na regressão: {e}")
 
 # ------------------------
     if not df_SAT_TAREFAS_full.empty:
