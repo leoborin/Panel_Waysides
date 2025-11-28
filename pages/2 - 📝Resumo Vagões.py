@@ -561,8 +561,8 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
     df_final = df1.merge(df_max, on='key', how='left') \
         .merge(df_last[['key', 'ultima_medicao', 'data_ultima_medicao']],
                on='key', how='left')
-
-    df_final = df_final[["EQUNR", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated", "DATA_GARANTIA_trated", "ULTIMA_RG",
+    df_final['VAGAO'] = df_final['EQUNR']
+    df_final = df_final[["EQUNR", "VAGAO", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated", "DATA_GARANTIA_trated", "ULTIMA_RG",
                          "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "key"]]
 
     df_tratado = df_final.rename(columns={

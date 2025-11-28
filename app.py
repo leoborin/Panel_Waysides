@@ -10,7 +10,8 @@ st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 # Mensagem de boas-vindas
-st.markdown("<h1 style='text-align: center;'>👋 Bem vindo ao Portal de Inteligência de Dados</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>👋 Bem vindo ao Portal de Inteligência de Dados</h1>",
+            unsafe_allow_html=True)
 st.markdown("""
     <style>
         header {
@@ -80,7 +81,7 @@ st.markdown("""
 
 
 col1, col2 = st.columns([1, 2])
-st.markdown("<br>", unsafe_allow_html=True) 
+st.markdown("<br>", unsafe_allow_html=True)
 with col1:
     st.image("assets/vg666.png", width=100)
 
@@ -98,7 +99,7 @@ with cols[0]:
 </button>
 </a>
 """, unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True) 
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
 <a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Gest%C3%A3o_de_Ativos" target="_self">
 <button id="consulta-btn" class="card-button">
@@ -118,13 +119,13 @@ with cols[1]:
 </button>
 </a>
 """, unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True) 
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
-<a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Consulta_Master" target="_self">
+<a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Resumo_Vagões" target="_self">
 <button id="consulta-btn" class="card-button">
-<h3>Consulta Master</h3>
+<h3>Resumo Vagões</h3>
 <p>Realize uma pesquisa detalhada de cada Ativo</p>
-<div class="tag tag-ativo">Ativo</div>
+<div class="tag tag-ativo">Novo</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -138,7 +139,7 @@ with cols[2]:
 </button>
 </a>
 """, unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True) 
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
 <a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Consulta_Master" target="_self">
 <button id="consulta-btn" class="card-button">
@@ -148,6 +149,3 @@ with cols[2]:
 </button>
 </a>
 """, unsafe_allow_html=True)
-
-
-
