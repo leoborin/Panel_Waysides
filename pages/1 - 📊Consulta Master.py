@@ -23,6 +23,7 @@ eqnr = st.query_params.get("eqnr")
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
+cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
@@ -34,6 +35,50 @@ st.header("Consulta Completa Vagões v0 - Visão Micro")
 
 # functions Begin --------------------------------------------------
 # main def
+
+# df_trkv_trated, r2, mae, rmse = regrecao()
+
+
+def tratar_outliers_trkv(df):
+    """
+    Remove medições anômalas com base nas 3 últimas medições por key.
+
+    - Valor é outlier se:
+        valor > max_3 * 1.30
+        valor < min_3 * 0.70
+    """
+    df["key"] = df["CarIDNumber"].astype(int)
+    df["timestr"] = pd.to_datetime(
+        df["timestr"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
+    df = df.sort_values(["key", "timestr"])
+
+    # Cálculo da força máxima entre os 8 sensores
+    sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
+
+    df["max_valor"] = df[sensores].max(axis=1)
+
+    df["min_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).min().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    df["max_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).max().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    # Regras ±30%
+    df["DESCARTAR"] = (
+        (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
+        (df["max_valor"] < df["min_3"] * (1-cof_Outlier))
+    )
+
+    df["STATUS_out"] = df["DESCARTAR"].map(
+        {True: "DESCARTAR", False: "OK"})
+    return df
 
 
 def busca_dados(vagao):
@@ -281,37 +326,42 @@ def busca_dados(vagao):
 def tratar_dfs(df_WCM, df_z369, df_trkv):
 
     def tratar_trkv(df_trkv):
-        # Converter datas (aceita ISO e dd/mm/yyyy)
-        df_trkv['timestr'] = pd.to_datetime(
-            df_trkv['timestr'], format='mixed', dayfirst=True, errors='coerce'
-        )
+
+        # Criar coluna Data
         df_trkv['Data'] = df_trkv['timestr'].dt.date
 
         # Colunas de impacto
-        colunas_impacto = ['A#L_1', 'A#L_2', 'A#R_1',
-                           'A#R_2', 'B#L_1', 'B#L_2', 'B#R_1']
+        colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                           "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
 
-        # Substituir valores 0 por NaN
-        df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(
-            0, np.nan)
+        # Substituir zeros por NaN
+        df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(0, np.nan)
 
-        # Calcular o maior valor por linha
+        # Maior impacto por linha
         df_trkv['Maior_Impacto_Linha'] = df_trkv[colunas_impacto].max(
             axis=1, skipna=True)
 
-        # Agrupar por data
+        # Se não existir STATUS_out (por exemplo antes de tratar outliers), cria como OK
+        if "STATUS_out" not in df_trkv.columns:
+            df_trkv["STATUS_out"] = "OK"
+
+        # --- AGRUPAMENTO POR DIA ---
         df_trkv_max = (
-            df_trkv.groupby('Data', as_index=False)['Maior_Impacto_Linha']
-            .max()
-            .rename(columns={'Maior_Impacto_Linha': 'Maior_Impacto_Diario'})
-            .sort_values(by='Data', ascending=True)
+            df_trkv.groupby("Data", as_index=False)
+            .agg({
+                "Maior_Impacto_Linha": "max",
+                # Regra: se existir qualquer "DESCARTAR" no dia → dia é DESCARTAR
+                "STATUS_out": lambda x: "DESCARTAR" if "DESCARTAR" in x.values else "OK"
+            })
+            .rename(columns={"Maior_Impacto_Linha": "Maior_Impacto_Diario"})
+            .sort_values(by="Data")
         )
 
-        # Formatar
-        df_trkv_max['TRKV_MAX_Cunha'] = df_trkv_max['Maior_Impacto_Diario'].round(
+        # Formatar valor final
+        df_trkv_max["TRKV_MAX_Cunha"] = df_trkv_max["Maior_Impacto_Diario"].round(
             2)
 
-        return df_trkv_max[['Data', 'TRKV_MAX_Cunha']]
+        return df_trkv_max[["Data", "TRKV_MAX_Cunha", "STATUS_out"]]
     try:
         df_trkv_trated = tratar_trkv(df_trkv)
     except Exception as e:
@@ -493,7 +543,12 @@ if st.button("Executar função"):
 
         df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full = busca_dados(
             vg_entrada)
+        try:
+            df_trkv = tratar_outliers_trkv(df_trkv)
+        except Exception as e:
+            print(f"Erro ao tratar outliers df_trkv: {e}")
 
+        print(df_trkv.head())
         df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated = tratar_dfs(
             df_WCM, df_z369, df_trkv)
 
@@ -815,6 +870,7 @@ if st.button("Executar função"):
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
     print("validation2")
+    print(df_trkv_trated)
     try:
         import numpy as np
         import pandas as pd
@@ -848,6 +904,8 @@ if st.button("Executar função"):
             # ============================
             # 1) Preparar dados
             # ============================
+            df = df[df['STATUS_out'] == "OK"]
+
             x_all = pd.to_datetime(df[col_x], errors="coerce").map(
                 pd.Timestamp.toordinal).values
             y_all = df[col_y].values
@@ -922,100 +980,115 @@ if st.button("Executar função"):
         print(f"RMSE: {rmse}")
         print(f"MAE: {mae}")
 
+    except Exception as e:
+        print(f"Erro na regressão: {e}")
+        slope = 0
+        intercept = 0
+        r2 = 0
+        rmse = 0
+        mae = 0
+        y_pred = 0
+
 
 # -------------------------------------------------------------------Regressão
-    # df_trkv_trated, r2, mae, rmse = regrecao()
 
         def plot_Waysides():
+            try:
+                fig_trkv = go.Figure()
 
-            fig_trkv = go.Figure()
+                # -------------------------
+                # 1. Série real
+                # -------------------------
+                fig_trkv.add_trace(go.Scatter(
+                    x=df_trkv_trated["Data"],
+                    y=df_trkv_trated["TRKV_MAX_Cunha"],
+                    mode="lines+markers+text",
+                    text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
+                    textposition="top center",
+                    name="TRKV_MAX_Cunha",
+                    marker=dict(size=7),
+                    line=dict(width=2)
+                ))
 
-            # -------------------------
-            # 1. Série real
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_trkv_trated["Data"],
-                y=df_trkv_trated["TRKV_MAX_Cunha"],
-                mode="lines+markers+text",
-                text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
-                textposition="top center",
-                name="TRKV_MAX_Cunha",
-                marker=dict(size=7),
-                line=dict(width=2)
-            ))
+                # -------------------------
+                # 2. Linha de regressão real
+                # -------------------------
+                fig_trkv.add_trace(go.Scatter(
+                    x=df_trkv_trated["Data"],
+                    y=y_pred,
+                    mode="lines",
+                    line=dict(width=2, dash="dash", color="#A52BE3"),
+                    name=f"Regressão Linear (slope={slope:.4f})"
+                ))
 
-            # -------------------------
-            # 2. Linha de regressão real
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_trkv_trated["Data"],
-                y=y_pred,
-                mode="lines",
-                line=dict(width=2, dash="dash", color="#A52BE3"),
-                name=f"Regressão Linear (slope={slope:.4f})"
-            ))
+                # -------------------------
+                # 3. PROJEÇÃO FUTURA
+                # -------------------------
+                fig_trkv.add_trace(go.Scatter(
+                    x=df_projecao["Data"],
+                    y=df_projecao["y_pred"],
+                    mode="lines",
+                    line=dict(width=2, dash="dot", color="#5A5555"),
+                    name="Projeção Futura (+30 dias)"
+                ))
 
-            # -------------------------
-            # 3. PROJEÇÃO FUTURA
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_projecao["Data"],
-                y=df_projecao["y_pred"],
-                mode="lines",
-                line=dict(width=2, dash="dot", color="#5A5555"),
-                name="Projeção Futura (+30 dias)"
-            ))
+                # Layout
+                fig_trkv.update_layout(
+                    title="TRKV - Regressão + Projeção Futura",
+                    xaxis_title="Data",
+                    yaxis_title="Valor",
+                    template="plotly_white",
+                    height=380,
+                )
 
-            # Layout
-            fig_trkv.update_layout(
-                title="TRKV - Regressão + Projeção Futura",
-                xaxis_title="Data",
-                yaxis_title="Valor",
-                template="plotly_white",
-                height=380,
-            )
-
-            # Range eixo Y
-            fig_trkv.update_yaxes(range=[10, 70])
+                # Range eixo Y
+                fig_trkv.update_yaxes(range=[10, 90])
+            except Exception as e:
+                print(f"Erro ao plotar gráfico TRKV: {e}")
+                fig_trkv = go.Figure()
 
             # =========================
             # WCM
             # =========================
+            try:
+                df_wcm_trated["Alarme"] = 210
 
-            df_wcm_trated["Alarme"] = 200
+                fig_wcm = go.Figure()
 
-            fig_wcm = go.Figure()
+                # Curva principal
+                fig_wcm.add_trace(go.Scatter(
+                    x=df_wcm_trated["Data"],
+                    y=df_wcm_trated["Maior_Impacto_kN"],
+                    mode="lines+markers+text",
+                    text=df_wcm_trated["Maior_Impacto_kN"].round(
+                        1).astype(str),
+                    textposition="top center",
+                    name="Maior_Impacto_kN",
+                    marker=dict(size=7),
+                    line=dict(width=2)
+                ))
 
-            # Curva principal
-            fig_wcm.add_trace(go.Scatter(
-                x=df_wcm_trated["Data"],
-                y=df_wcm_trated["Maior_Impacto_kN"],
-                mode="lines+markers+text",
-                text=df_wcm_trated["Maior_Impacto_kN"].round(1).astype(str),
-                textposition="top center",
-                name="Maior_Impacto_kN",
-                marker=dict(size=7),
-                line=dict(width=2)
-            ))
+                # Linha de limite
+                fig_wcm.add_trace(go.Scatter(
+                    x=df_wcm_trated["Data"],
+                    y=df_wcm_trated["Alarme"],
+                    mode="lines",
+                    name="Alarme 200 kN",
+                    line=dict(color="red", width=2, dash="dash")
+                ))
 
-            # Linha de limite
-            fig_wcm.add_trace(go.Scatter(
-                x=df_wcm_trated["Data"],
-                y=df_wcm_trated["Alarme"],
-                mode="lines",
-                name="Alarme 200 kN",
-                line=dict(color="red", width=2, dash="dash")
-            ))
+                fig_wcm.update_layout(
+                    title="wcm",
+                    xaxis_title="Data",
+                    yaxis_title="Valor",
+                    template="plotly_white",
+                    height=380
+                )
 
-            fig_wcm.update_layout(
-                title="wcm",
-                xaxis_title="Data",
-                yaxis_title="Valor",
-                template="plotly_white",
-                height=380
-            )
-
-            fig_wcm.update_yaxes(range=[0, 300])
+                fig_wcm.update_yaxes(range=[0, 300])
+            except Exception as e:
+                print(f"Erro ao plotar gráfico WCM: {e}")
+                fig_wcm = go.Figure()
             # =========================
             # STREAMLIT LAYOUT
             # =========================
@@ -1023,6 +1096,7 @@ if st.button("Executar função"):
             col1, col2 = st.columns(2)
 
             with col1:
+
                 st.subheader("TRKV Cunha Máximo Passagem (mm)")
                 st.plotly_chart(fig_trkv, use_container_width=True)
                 st.markdown(f"""
@@ -1030,6 +1104,7 @@ if st.button("Executar função"):
                 **MAE:** `{mae:.4f}`  
                 **RMSE:** `{rmse:.4f}`  
                 """)
+
                 st.dataframe(df_trkv_trated)
 
             with col2:
@@ -1047,8 +1122,6 @@ if st.button("Executar função"):
     # graficos WCM e TRKV
         plot_Waysides()
 
-    except Exception as e:
-        print(f"Erro na regressão: {e}")
 
 # ------------------------
     if not df_SAT_TAREFAS_full.empty:

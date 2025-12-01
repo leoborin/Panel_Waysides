@@ -30,6 +30,7 @@ warnings.filterwarnings("ignore")
 
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
+cof_Outlier = 0.2
 
 
 st.set_page_config(layout="wide")
@@ -407,74 +408,146 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
 
     df_trkv["max_valor"] = df_trkv[["A#L_1", "A#L_2", "A#R_1",
                                     "A#R_2", "B#L_1", "B#L_2", "B#R_1", "B#R_2"]].max(axis=1)
+    df_trkv = df_trkv[(df_trkv["max_valor"] != 0) &
+                      (df_trkv["max_valor"].notna())]
+
     df_trkv_filtred = df_trkv[["CarIDInitial",
                                "CarIDNumber", "timestr", "max_valor"]]
+    df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["max_valor"].astype(
+        int) < 68]
 
-    df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["CarIDInitial"].notna()]
-    df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["max_valor"].notna()]
-    df_trkv_filtred['timestr'] = pd.to_datetime(
-        df_trkv_filtred['timestr'], format="%d/%m/%Y %H:%M:%S", errors='coerce')
-    df_trkv_filtred['key'] = df_trkv_filtred['CarIDNumber'].astype(int)
+    # Garantir ordenação correta
 
-    df_z851['key'] = df_z851['EQUNR'].str.replace(
-        r'[^0-9]', '', regex=True).astype(int)
-    df1 = df_z851
-    df2 = df_trkv_filtred
 
-    # 1. Filtra apenas passagens com medição não nula
-    df2_filtrado = df2[df2['max_valor'].notnull()].copy()
+def concatenar_dados_trkv_z851(df_z851, df_trkv):
+    """
+    Pipeline de preparação, filtragem de outliers e consolidação dos dados
+    do TRKV com a tabela Z851.
 
-    # 2. Ordena por equipamento e data (da mais recente para a mais antiga)
-    df2_filtrado = df2_filtrado.sort_values(
-        ['key', 'timestr'], ascending=[True, True])
-
-    # ============================================================
-    # A) PEGAR A ÚLTIMA MEDIÇÃO E A DATA DA ÚLTIMA MEDIÇÃO
-    # ============================================================
-
-    # Ordena por data DESC dentro da chave
-    df2_desc = df2_filtrado.sort_values(
-        ['key', 'timestr'], ascending=[True, False])
-
-    # Pega a última linha por equipamento
-    df_last = df2_desc.groupby('key').first().reset_index()
-
-    df_last.rename(columns={
-        'max_valor': 'ultima_medicao',
-        'timestr': 'data_ultima_medicao'
-    }, inplace=True)
+    Etapas principais:
+    1. Calcular maior valor de impacto por passagem.
+    2. Remover leituras inválidas (0, NaN, > 68).
+    3. Detectar e remover outliers (baseado nas 3 últimas medições ±30%).
+    4. Preparar chave 'key'.
+    5. Construir métricas: última medição e maior valor das 3 últimas.
+    6. Merge final com dados Z851.
+    """
 
     # ============================================================
-    # B) PEGAR A MAIOR MEDIÇÃO ENTRE AS 3 ÚLTIMAS PASSAGENS
+    # 1) TRATAMENTO INICIAL DO TRKV
     # ============================================================
 
-    # Pega rank das 3 últimas (já está ordenado ascendente)
-    df2_filtrado['rank'] = df2_filtrado.groupby(
-        'key')['timestr'].rank(method='first', ascending=False)
+    # Cálculo da força máxima entre os 8 sensores
+    sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
 
-    df_top3 = df2_filtrado[df2_filtrado['rank'] <= 3]
+    df_trkv["max_valor"] = df_trkv[sensores].max(axis=1)
 
-    df_max = df_top3.groupby('key')['max_valor'].max().reset_index()
-    df_max.rename(columns={'max_valor': 'max_medicao_ultimas_3'}, inplace=True)
+    # Remover valores inválidos
+    df_trkv = df_trkv[(df_trkv["max_valor"] != 0) &
+                      (df_trkv["max_valor"].notna())]
+
+    # Filtrar colunas úteis
+    df_trkv = df_trkv[["CarIDInitial", "CarIDNumber", "timestr", "max_valor"]]
+
+    # Filtrar valores muito altos (ruído claro)
+    df_trkv = df_trkv[df_trkv["max_valor"].astype(int) < 68]
+
+    # Criar chave do vagão
+    df_trkv["key"] = df_trkv["CarIDNumber"].astype(int)
+
+    # Converter timestamp
+    df_trkv["timestr"] = pd.to_datetime(
+        df_trkv["timestr"], format="%d/%m/%Y %H:%M:%S", errors="coerce"
+    )
 
     # ============================================================
-    # C) MERGE FINAL
+    # 2) FUNÇÃO DE TRATAMENTO DE OUTLIERS
     # ============================================================
 
-    df_final = df1.merge(df_max, on='key', how='left') \
-        .merge(df_last[['key', 'ultima_medicao', 'data_ultima_medicao']],
-               on='key', how='left')
+    def tratar_outliers(df):
+        """
+        Remove medições anômalas com base nas 3 últimas medições por key.
 
-    # df_final = df_final[["EQUNR", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated", "DATA_GARANTIA_trated", "ULTIMA_RG",
-    #                      "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "key"]]
+        - Valor é outlier se:
+            valor > max_3 * 1.30
+            valor < min_3 * 0.70
+        """
+        df = df.sort_values(["key", "timestr"])
 
-    df_tratado = df_final.rename(columns={
-        'max_medicao_ultimas_3': 'TRKV_max_medicao_ultimas_3',
-        'ultima_medicao': 'TRKV_ultima_medicao',
-        'data_ultima_medicao': 'TRKV_last_timestamp'
-    })
+        df["min_3"] = (
+            df.groupby("key")["max_valor"]
+              .rolling(3).min().shift(1)
+              .reset_index(level=0, drop=True)
+        )
 
-    return df_tratado
+        df["max_3"] = (
+            df.groupby("key")["max_valor"]
+              .rolling(3).max().shift(1)
+              .reset_index(level=0, drop=True)
+        )
+
+        # Regras ±30%
+        df["DESCARTAR"] = (
+            (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
+            (df["max_valor"] < df["min_3"] * (1-cof_Outlier))
+        )
+
+        df["STATUS_out"] = df["DESCARTAR"].map(
+            {True: "DESCARTAR", False: "OK"})
+        return df
+
+    # Aplicar e remover outliers
+    df_trkv = tratar_outliers(df_trkv)
+    df_trkv = df_trkv[df_trkv["DESCARTAR"] == False]
+
+    # ============================================================
+    # 3) CÁLCULO DAS MÉTRICAS (última medição + top 3)
+    # ============================================================
+
+    df_trkv_valid = df_trkv.sort_values(["key", "timestr"])
+
+    # A) Última medição
+    df_last = (
+        df_trkv_valid.sort_values(["key", "timestr"], ascending=[True, False])
+        .groupby("key")
+        .first()
+        .reset_index()
+        .rename(columns={
+            "max_valor": "TRKV_ultima_medicao",
+            "timestr": "TRKV_last_timestamp"
+        })
+    )
+
+    # B) Maior valor das 3 últimas passagens
+    df_trkv_valid["rank"] = df_trkv_valid.groupby("key")["timestr"] \
+                                         .rank(method="first", ascending=False)
+
+    df_top3 = df_trkv_valid[df_trkv_valid["rank"] <= 3]
+
+    df_max3 = (
+        df_top3.groupby("key")["max_valor"]
+               .max()
+               .reset_index()
+               .rename(columns={"max_valor": "TRKV_max_medicao_ultimas_3"})
+    )
+
+    # ============================================================
+    # 4) PREPARAÇÃO DO Z851 E MERGE FINAL
+    # ============================================================
+
+    df_z851["key"] = (
+        df_z851["EQUNR"]
+        .str.replace(r"[^0-9]", "", regex=True)
+        .astype(int)
+    )
+
+    df_final = (
+        df_z851.merge(df_max3, on="key", how="left")
+        .merge(df_last, on="key", how="left")
+    )
+
+    return df_final
 
 
 def tratar_WCM(df_WCM):
@@ -574,15 +647,128 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
     return df_tratado
 
 
+def concatenar_dados_new2_z369(df_new2, df_z369):
+
+    contagem_pivot = (
+        df_z369[df_z369["STATUS"] == "MSPN"]
+        .pivot_table(
+            index="ATIVO",
+            columns="TP NOTA",
+            values="STATUS",
+            aggfunc="count",
+            fill_value=0
+        )
+    )
+
+    mapa_colunas = {
+        "M1": "M1 - Nota monitorada",
+        "M2": "M2 - Nota crítica",
+        "M3": "M3 - Nota de retenção",
+        "M4": "M4 - Nota da Engenharia",
+        "M5": "M5 - Encerramento manutenção corretiva",
+        "M6": "M6 - Vagão acidentado/descarrilado",
+        "M7": "M7 - Encerramento manutenção preventiva",
+        "M8": "M8 - Plano do PCM",
+        "M9": "M9 - Vandalismo"
+    }
+
+    # renomeação segura
+    contagem_pivot = contagem_pivot.rename(columns={
+        k: v for k, v in mapa_colunas.items() if k in contagem_pivot.columns
+    }).reset_index()
+    print(contagem_pivot.columns)
+    print(df_z369.columns)
+    # Preparar chave 'key' no df_z369
+    contagem_pivot['key'] = contagem_pivot['ATIVO'].str.replace(
+        r"[^0-9]", "", regex=True).astype(int)
+
+    # Merge final
+    df_final = df_new2.merge(contagem_pivot,
+                             on='key', how='left')
+
+    return df_final
+
+
+def traduzir_STATUS(df):
+    # Mapa direto somente para valores conhecidos
+    mapa_status = {
+        1: "Disponível",
+        2: "Retido"
+    }
+
+    # Se a coluna STATUS não existir, retornar sem erro
+    if "STATUS" not in df.columns:
+        return df
+
+    # Aplicar tradução segura
+    df["STATUS_TRADUZIDO"] = df["STATUS"].map(
+        mapa_status).fillna("Indisponível")
+
+    return df
+
+
 wcm_trated = tratar_WCM(df_WCM)
 df_new1 = concatenar_dados_trkv_z851(df_z851, df_trkv)
 df_new2 = concatenar_dados_new1_wcm_trated(df_new1, wcm_trated)
+df_new3 = concatenar_dados_new2_z369(df_new2, df_z369)
 
-df_new2["SERIE"] = df_new2["VAGAO"].str[-3:]
+df_new3["SERIE"] = df_new3["VAGAO"].str[-3:]
 # df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
 
 
-df_base_concatenada = df_new2
+df_base_concatenada = df_new3
+df_base_concatenada = traduzir_STATUS(df_base_concatenada)
+
+colunas_ordenadas = [
+
+    # 🔵 Identificação do vagão
+    "EQUNR",
+    "VAGAO",
+    "SERIE",
+    "STATUS_TRADUZIDO",
+    "MODELO",
+    "STATUS",
+    "DATA_DE_FABRICACAO_trated",
+    "DATA_GARANTIA_trated",
+    "ULTIMA_RG",
+    "KM_RODADO_DESDE_ULTIMA_RG",
+
+    # =============================
+    # 🟠 Separador WCM
+    # =============================
+    "Separador_WCM",   # coluna vazia só para separar
+    "WCM_max_medicao_ultimas_3",
+    "WCM_ultima_medicao",
+    "WCM_last_timestamp",
+
+    # =============================
+    # 🟣 Separador TRKV
+    # =============================
+    "Separador_TRKV",
+    "TRKV_max_medicao_ultimas_3",
+    "TRKV_ultima_medicao",
+    "TRKV_last_timestamp",
+
+    # =============================
+    # 🔴 Separador Status M1–M9
+    # =============================
+    "Separador_Status",
+    "M1 - Nota monitorada",
+    "M2 - Nota crítica",
+    "M3 - Nota de retenção",
+    "M4 - Nota da Engenharia",
+    "M6 - Vagão acidentado/descarrilado",
+    "M7 - Encerramento manutenção preventiva",
+    "M8 - Plano do PCM",
+    "M9 - Vandalismo",
+]
+
+df_base_concatenada["Separador_WCM"] = " | "
+df_base_concatenada["Separador_TRKV"] = " | "
+df_base_concatenada["Separador_Status"] = " | "
+
+df_base_concatenada = df_base_concatenada[colunas_ordenadas]
+
 
 # =====================================================
 # TELA PRINCIPAL
