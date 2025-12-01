@@ -581,7 +581,6 @@ df_new2 = concatenar_dados_new1_wcm_trated(df_new1, wcm_trated)
 df_new2["SERIE"] = df_new2["VAGAO"].str[-3:]
 # df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
 
-
 df_base_concatenada = df_new2
 
 # =====================================================
@@ -616,21 +615,57 @@ if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
 
 # =============================
 # Filtro – EQUNR
-# =============================s
-lista_valores = sorted(df_base_concatenada["EQUNR"].unique())
+# =============================
 
-filtro_equnr = st.selectbox(
-    "Filtrar por EQUNR:",
-    options=["Todos"] + lista_valores,
-    index=0
-)
-# Aplicar filtro
+# Criar colunas
+col1, col2, col3, col4 = st.columns(4)
+
+# Lista de opções
+lista_equnr = sorted(df_base_concatenada["EQUNR"].unique())
+lista_serie = sorted(df_base_concatenada["SERIE"].unique())
+lista_modelo = sorted(df_base_concatenada["MODELO"].unique())
+lista_status = sorted(df_base_concatenada["STATUS"].unique())
+
+# Capturar seleções (sem aplicar ainda)
+with col1:
+    filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=["Todos"] + lista_equnr, index=0)
+
+with col2:
+    filtro_serie = st.selectbox("Filtrar por Série:", options=["Todos"] + lista_serie, index=0)
+
+with col3:
+    filtro_modelo = st.selectbox("Filtrar por Modelo:", options=["Todos"] + lista_modelo, index=0)
+
+with col4:
+    filtro_status = st.multiselect("Filtrar por Status:", options=lista_status, placeholder='Escolha os Status')
+
+# ✅ Aplicar todos os filtros simultaneamente
+df_filtrado = df_base_concatenada.copy()
+
 if filtro_equnr != "Todos":
-    df_filtrado = df_base_concatenada[df_base_concatenada["EQUNR"]
-                                      == filtro_equnr]
-else:
-    df_filtrado = df_base_concatenada
+    df_filtrado = df_filtrado[df_filtrado["EQUNR"] == filtro_equnr]
 
+if filtro_serie != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["SERIE"] == filtro_serie]
+
+if filtro_modelo != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["MODELO"] == filtro_modelo]
+
+if filtro_status:  # Se houver seleção
+    df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(filtro_status)]
+
+col_WCM, col_TRKV = st.columns(2)
+
+with col_WCM:
+    values = st.slider("Selecione um range para os valores de WCM", 0, 200, (0, 200), key='slider_WCM')
+    df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0]) 
+                          & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
+
+with col_TRKV:
+    values1 = st.slider("Selecione um range para os valores de TRKV", 0, 200, (0, 200), key='slider_TRKV')
+    df_filtrado = df_filtrado[(df_filtrado["TRKV_max_medicao_ultimas_3"] >= values1[0]) 
+                          & (df_filtrado["TRKV_max_medicao_ultimas_3"] <= values1[1])]
+# ===========================================
 
 def create_EQUNR_link(equnr):
     """Cria link com o valor da EQUNR"""
