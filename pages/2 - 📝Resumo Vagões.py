@@ -563,7 +563,7 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
                on='key', how='left')
     df_final['VAGAO'] = df_final['EQUNR']
     df_final = df_final[["EQUNR", "VAGAO", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated", "DATA_GARANTIA_trated", "ULTIMA_RG",
-                         "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "key"]]
+                         "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "TRKV_max_medicao_ultimas_3", "TRKV_ultima_medicao", "TRKV_last_timestamp", "key"]]
 
     df_tratado = df_final.rename(columns={
         'max_medicao_ultimas_3': 'WCM_max_medicao_ultimas_3',
@@ -577,6 +577,9 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
 wcm_trated = tratar_WCM(df_WCM)
 df_new1 = concatenar_dados_trkv_z851(df_z851, df_trkv)
 df_new2 = concatenar_dados_new1_wcm_trated(df_new1, wcm_trated)
+
+df_new2["SERIE"] = df_new2["VAGAO"].str[-3:]
+# df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
 
 
 df_base_concatenada = df_new2
