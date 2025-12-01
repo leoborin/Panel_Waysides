@@ -992,135 +992,135 @@ if st.button("Executar função"):
 
 # -------------------------------------------------------------------Regressão
 
-        def plot_Waysides():
-            try:
-                fig_trkv = go.Figure()
+    def plot_Waysides():
+        try:
+            fig_trkv = go.Figure()
 
-                # -------------------------
-                # 1. Série real
-                # -------------------------
-                fig_trkv.add_trace(go.Scatter(
-                    x=df_trkv_trated["Data"],
-                    y=df_trkv_trated["TRKV_MAX_Cunha"],
-                    mode="lines+markers+text",
-                    text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
-                    textposition="top center",
-                    name="TRKV_MAX_Cunha",
-                    marker=dict(size=7),
-                    line=dict(width=2)
-                ))
+            # -------------------------
+            # 1. Série real
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=df_trkv_trated["TRKV_MAX_Cunha"],
+                mode="lines+markers+text",
+                text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
+                textposition="top center",
+                name="TRKV_MAX_Cunha",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
 
-                # -------------------------
-                # 2. Linha de regressão real
-                # -------------------------
-                fig_trkv.add_trace(go.Scatter(
-                    x=df_trkv_trated["Data"],
-                    y=y_pred,
-                    mode="lines",
-                    line=dict(width=2, dash="dash", color="#A52BE3"),
-                    name=f"Regressão Linear (slope={slope:.4f})"
-                ))
+            # -------------------------
+            # 2. Linha de regressão real
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=y_pred,
+                mode="lines",
+                line=dict(width=2, dash="dash", color="#A52BE3"),
+                name=f"Regressão Linear (slope={slope:.4f})"
+            ))
 
-                # -------------------------
-                # 3. PROJEÇÃO FUTURA
-                # -------------------------
-                fig_trkv.add_trace(go.Scatter(
-                    x=df_projecao["Data"],
-                    y=df_projecao["y_pred"],
-                    mode="lines",
-                    line=dict(width=2, dash="dot", color="#5A5555"),
-                    name="Projeção Futura (+30 dias)"
-                ))
+            # -------------------------
+            # 3. PROJEÇÃO FUTURA
+            # -------------------------
+            fig_trkv.add_trace(go.Scatter(
+                x=df_projecao["Data"],
+                y=df_projecao["y_pred"],
+                mode="lines",
+                line=dict(width=2, dash="dot", color="#5A5555"),
+                name="Projeção Futura (+30 dias)"
+            ))
 
-                # Layout
-                fig_trkv.update_layout(
-                    title="TRKV - Regressão + Projeção Futura",
-                    xaxis_title="Data",
-                    yaxis_title="Valor",
-                    template="plotly_white",
-                    height=380,
-                )
+            # Layout
+            fig_trkv.update_layout(
+                title="TRKV - Regressão + Projeção Futura",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380,
+            )
 
-                # Range eixo Y
-                fig_trkv.update_yaxes(range=[10, 90])
-            except Exception as e:
-                print(f"Erro ao plotar gráfico TRKV: {e}")
-                fig_trkv = go.Figure()
+            # Range eixo Y
+            fig_trkv.update_yaxes(range=[10, 90])
+        except Exception as e:
+            print(f"Erro ao plotar gráfico TRKV: {e}")
+            fig_trkv = go.Figure()
 
-            # =========================
-            # WCM
-            # =========================
-            try:
-                df_wcm_trated["Alarme"] = 210
+        # =========================
+        # WCM
+        # =========================
+        try:
+            df_wcm_trated["Alarme"] = 210
 
-                fig_wcm = go.Figure()
+            fig_wcm = go.Figure()
 
-                # Curva principal
-                fig_wcm.add_trace(go.Scatter(
-                    x=df_wcm_trated["Data"],
-                    y=df_wcm_trated["Maior_Impacto_kN"],
-                    mode="lines+markers+text",
-                    text=df_wcm_trated["Maior_Impacto_kN"].round(
-                        1).astype(str),
-                    textposition="top center",
-                    name="Maior_Impacto_kN",
-                    marker=dict(size=7),
-                    line=dict(width=2)
-                ))
+            # Curva principal
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Maior_Impacto_kN"],
+                mode="lines+markers+text",
+                text=df_wcm_trated["Maior_Impacto_kN"].round(
+                    1).astype(str),
+                textposition="top center",
+                name="Maior_Impacto_kN",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
 
-                # Linha de limite
-                fig_wcm.add_trace(go.Scatter(
-                    x=df_wcm_trated["Data"],
-                    y=df_wcm_trated["Alarme"],
-                    mode="lines",
-                    name="Alarme 200 kN",
-                    line=dict(color="red", width=2, dash="dash")
-                ))
+            # Linha de limite
+            fig_wcm.add_trace(go.Scatter(
+                x=df_wcm_trated["Data"],
+                y=df_wcm_trated["Alarme"],
+                mode="lines",
+                name="Alarme 200 kN",
+                line=dict(color="red", width=2, dash="dash")
+            ))
 
-                fig_wcm.update_layout(
-                    title="wcm",
-                    xaxis_title="Data",
-                    yaxis_title="Valor",
-                    template="plotly_white",
-                    height=380
-                )
+            fig_wcm.update_layout(
+                title="wcm",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380
+            )
 
-                fig_wcm.update_yaxes(range=[0, 300])
-            except Exception as e:
-                print(f"Erro ao plotar gráfico WCM: {e}")
-                fig_wcm = go.Figure()
-            # =========================
-            # STREAMLIT LAYOUT
-            # =========================
+            fig_wcm.update_yaxes(range=[0, 300])
+        except Exception as e:
+            print(f"Erro ao plotar gráfico WCM: {e}")
+            fig_wcm = go.Figure()
+        # =========================
+        # STREAMLIT LAYOUT
+        # =========================
 
-            col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-            with col1:
+        with col1:
 
-                st.subheader("TRKV Cunha Máximo Passagem (mm)")
-                st.plotly_chart(fig_trkv, use_container_width=True)
-                st.markdown(f"""
-                **R²:** `{r2:.4f}`  
-                **MAE:** `{mae:.4f}`  
-                **RMSE:** `{rmse:.4f}`  
-                """)
+            st.subheader("TRKV Cunha Máximo Passagem (mm)")
+            st.plotly_chart(fig_trkv, use_container_width=True)
+            st.markdown(f"""
+            **R²:** `{r2:.4f}`  
+            **MAE:** `{mae:.4f}`  
+            **RMSE:** `{rmse:.4f}`  
+            """)
 
-                st.dataframe(df_trkv_trated)
+            st.dataframe(df_trkv_trated)
 
-            with col2:
+        with col2:
 
-                st.subheader("WCM Maior Impacto (kN)")
-                st.plotly_chart(fig_wcm, use_container_width=True)
-                st.markdown(f"""
-                **Alarme Baixo:** `-`   
-                **Alarme Médio:** `-`   
-                **Alarme Alto:** `-`  
-                """)
-                st.dataframe(df_wcm_trated)
+            st.subheader("WCM Maior Impacto (kN)")
+            st.plotly_chart(fig_wcm, use_container_width=True)
+            st.markdown(f"""
+            **Alarme Baixo:** `-`   
+            **Alarme Médio:** `-`   
+            **Alarme Alto:** `-`  
+            """)
+            st.dataframe(df_wcm_trated)
 
-                # Plota gráfico de linha
-    # graficos WCM e TRKV
-        plot_Waysides()
+            # Plota gráfico de linha
+# graficos WCM e TRKV
+    plot_Waysides()
 
 
 # ------------------------
