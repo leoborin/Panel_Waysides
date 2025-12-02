@@ -692,8 +692,8 @@ def concatenar_dados_new2_z369(df_new2, df_z369):
 def traduzir_STATUS(df):
     # Mapa direto somente para valores conhecidos
     mapa_status = {
-        1: "Disponível",
-        2: "Retido"
+        '1': "Disponível",
+        '2': "Retido"
     }
 
     # Se a coluna STATUS não existir, retornar sem erro
