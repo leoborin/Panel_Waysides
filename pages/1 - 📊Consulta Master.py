@@ -912,10 +912,10 @@ if st.button("Executar função"):
             )
 
             fig.update_yaxes(autorange="reversed")
-            #fig.update_layout(
-            #legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
-            #)
-            
+            fig.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+            )
+        
             st.plotly_chart(fig, width="stretch")
 
         plotar_gaph_resumo()
@@ -1242,7 +1242,10 @@ if st.button("Executar função"):
 
         with col1:
             st.subheader("TRKV Cunha Máximo Passagem ()")
-            st.plotly_chart(fig_trkv, use_container_width=True,
+            fig_trkv.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+            )
+            st.plotly_chart(fig_trkv, width="stretch",
                             key="plot_trkv")
             st.markdown(f"""
             **R²:** `{r2:.4f}`  
@@ -1254,7 +1257,10 @@ if st.button("Executar função"):
 
         with col2:
             st.subheader("WCM Maior Impacto (kN)")
-            st.plotly_chart(fig_wcm, use_container_width=True, key="plot_wcm")
+            fig_wcm.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+            )
+            st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
             st.markdown(f"""
             **Alarme Baixo:** `-`   
             **Alarme Médio:** `-`   
@@ -1267,8 +1273,11 @@ if st.button("Executar função"):
 
         with col2_1:
             st.subheader("TBOGI Módulo Max ()")
+            fig_TBOGI.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+            )
             st.plotly_chart(
-                fig_TBOGI, use_container_width=True, key="plot_tbogi")
+                fig_TBOGI, width="stretch", key="plot_tbogi")
             st.dataframe(df_TBOGI_trated.sort_values(
                 by="Data", ascending=False).reset_index(drop=True))
 
