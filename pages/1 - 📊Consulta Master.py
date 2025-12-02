@@ -913,7 +913,7 @@ if st.button("Executar função"):
 
             fig.update_yaxes(autorange="reversed")
 
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="content")
 
         plotar_gaph_resumo()
 # -------------------------------------------------------------------RESUMO
