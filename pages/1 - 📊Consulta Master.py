@@ -1,3 +1,4 @@
+
 import streamlit as st
 from pymongo import MongoClient
 import pandas as pd
@@ -23,6 +24,7 @@ eqnr = st.query_params.get("eqnr")
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
+cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
@@ -35,8 +37,97 @@ st.header("Consulta Completa Vagões v0 - Visão Micro")
 # functions Begin --------------------------------------------------
 # main def
 
+# df_trkv_trated, r2, mae, rmse = regrecao()
+
+
+def tratar_outliers_trkv(df):
+    """
+    Remove medições anômalas com base nas 3 últimas medições por key.
+
+    - Valor é outlier se:
+        valor > max_3 * 1.30
+        valor < min_3 * 0.70
+    """
+    df["key"] = df["CarIDNumber"].astype(int)
+    df["timestr"] = pd.to_datetime(
+        df["timestr"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
+    df = df.sort_values(["key", "timestr"])
+
+    # Cálculo da força máxima entre os 8 sensores
+    sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
+
+    df["max_valor"] = df[sensores].max(axis=1)
+
+    df["min_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).min().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    df["max_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).max().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    # Regras ±30%
+    df["DESCARTAR"] = (
+        (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
+        (df["max_valor"] < df["min_3"] * (1-cof_Outlier))
+    )
+
+    df["STATUS_out"] = df["DESCARTAR"].map(
+        {True: "DESCARTAR", False: "OK"})
+    return df
+
 
 def busca_dados(vagao):
+    def busca_TBOGI(vagao):
+        try:
+            vagao = int(vagao)
+            client = MongoClient(MONGO_URI)
+
+            # -----------------------------------------
+            # 1) Filtro seguro (busca exata, não parcial)
+            # -----------------------------------------
+
+            filter = {'car_num': re.compile(f"{vagao}")}
+
+            cursor = client[DB_NAME]["tbogi_treated"].find(filter)
+
+            # -----------------------------------------
+            # 2) Converter cursor → DataFrame
+            # -----------------------------------------
+            df = pd.DataFrame(list(cursor))
+
+            # Se cursor vazio → retorna df vazio
+            if df.empty:
+                print("TBOGI: Nenhum registro encontrado → retornando df vazio")
+                return pd.DataFrame()
+
+            # -----------------------------------------
+            # 3) Criar coluna valor_mod_pd (proteção caso 'tp' não exista)
+            # -----------------------------------------
+            if "tp" in df.columns:
+                df["valor_mod_pd"] = df["tp"].abs()
+            else:
+                print(
+                    "TBOGI: coluna 'tp' não encontrada — adicionando valor_mod_pd = NaN")
+                df["valor_mod_pd"] = np.nan
+
+            # -----------------------------------------
+            # 4) Remover _id se existir
+            # -----------------------------------------
+            df.drop(columns=["_id"], errors="ignore", inplace=True)
+
+            return df
+
+        except Exception as e:
+            # Captura qualquer erro e retorna df vazio
+            print(f"Erro ao consultar TBOGI: {e}")
+            return pd.DataFrame()
+
     def busca_z1568(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
@@ -90,8 +181,8 @@ def busca_dados(vagao):
             {
                 "$match": {
                     "json_documents.json_Identificação do veículo": {
-                        "$exists": True,
-                        "$ne": ""
+                        "$regex": vagao_str,
+                        "$options": "i"   # ignorar maiúsc/minúsc (opcional)
                     }
                 }
             },
@@ -107,8 +198,8 @@ def busca_dados(vagao):
             {
                 "$match": {
                     "json_documents.json_Identificação do veículo": {
-                        "$exists": True,
-                        "$ne": ""
+                        "$regex": vagao_str,
+                        "$options": "i"   # ignorar maiúsc/minúsc (opcional)
                     }
                 }
             }
@@ -235,7 +326,8 @@ def busca_dados(vagao):
             busca_z851,
             busca_z1568,
             busca_Tela164,
-            busca_SAT_TAREFAS_full
+            busca_SAT_TAREFAS_full,
+            busca_TBOGI
         ]
 
         resultados = {}
@@ -265,6 +357,7 @@ def busca_dados(vagao):
     df_z1568 = result["busca_z1568"]
     df_164 = result["busca_Tela164"]
     df_SAT_TAREFAS_full = result["busca_SAT_TAREFAS_full"]
+    df_busca_TBOGI = result["busca_TBOGI"]
 
     print("df_WCM:", len(df_WCM))
     print("df_z369:", len(df_z369))
@@ -273,45 +366,66 @@ def busca_dados(vagao):
     print("df_z1568:", len(df_z1568))
     print("df_164:", len(df_164))
     print("df_SAT_TAREFAS_full:", len(df_SAT_TAREFAS_full))
+    print("df_busca_TBOGI:", len(df_busca_TBOGI))
     st.success("Função executada com sucesso!")
 
-    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full
+    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI
 
 
-def tratar_dfs(df_WCM, df_z369, df_trkv):
+def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
+    def tratar_trkv(df_busca_TBOGI):
+        df_resumo = (
+            df_busca_TBOGI.groupby("timestamp_received", as_index=False)[
+                "valor_mod_pd"]
+            .max()
+            .rename(columns={"valor_mod_pd": "max_valor_mod_pd"})
+            .sort_values(by="timestamp_received")
+        )
+        return df_resumo
+
+    try:
+        df_TBOGI_trated = tratar_trkv(df_busca_TBOGI)
+    except Exception as e:
+        print(f"Erro ao tratar df_TBOGI: {e}")
+        df_TBOGI_trated = pd.DataFrame()
 
     def tratar_trkv(df_trkv):
-        # Converter datas (aceita ISO e dd/mm/yyyy)
-        df_trkv['timestr'] = pd.to_datetime(
-            df_trkv['timestr'], format='mixed', dayfirst=True, errors='coerce'
-        )
+
+        # Criar coluna Data
         df_trkv['Data'] = df_trkv['timestr'].dt.date
 
         # Colunas de impacto
-        colunas_impacto = ['A#L_1', 'A#L_2', 'A#R_1',
-                           'A#R_2', 'B#L_1', 'B#L_2', 'B#R_1']
+        colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                           "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
 
-        # Substituir valores 0 por NaN
-        df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(
-            0, np.nan)
+        # Substituir zeros por NaN
+        df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(0, np.nan)
 
-        # Calcular o maior valor por linha
+        # Maior impacto por linha
         df_trkv['Maior_Impacto_Linha'] = df_trkv[colunas_impacto].max(
             axis=1, skipna=True)
 
-        # Agrupar por data
+        # Se não existir STATUS_out (por exemplo antes de tratar outliers), cria como OK
+        if "STATUS_out" not in df_trkv.columns:
+            df_trkv["STATUS_out"] = "OK"
+
+        # --- AGRUPAMENTO POR DIA ---
         df_trkv_max = (
-            df_trkv.groupby('Data', as_index=False)['Maior_Impacto_Linha']
-            .max()
-            .rename(columns={'Maior_Impacto_Linha': 'Maior_Impacto_Diario'})
-            .sort_values(by='Data', ascending=True)
+            df_trkv.groupby("Data", as_index=False)
+            .agg({
+                "Maior_Impacto_Linha": "max",
+                # Regra: se existir qualquer "DESCARTAR" no dia → dia é DESCARTAR
+                "STATUS_out": lambda x: "DESCARTAR" if "DESCARTAR" in x.values else "OK"
+            })
+            .rename(columns={"Maior_Impacto_Linha": "Maior_Impacto_Diario"})
+            .sort_values(by="Data")
         )
 
-        # Formatar
-        df_trkv_max['TRKV_MAX_Cunha'] = df_trkv_max['Maior_Impacto_Diario'].round(
+        # Formatar valor final
+        df_trkv_max["TRKV_MAX_Cunha"] = df_trkv_max["Maior_Impacto_Diario"].round(
             2)
 
-        return df_trkv_max[['Data', 'TRKV_MAX_Cunha']]
+        return df_trkv_max[["Data", "TRKV_MAX_Cunha", "STATUS_out"]]
     try:
         df_trkv_trated = tratar_trkv(df_trkv)
     except Exception as e:
@@ -376,7 +490,34 @@ def tratar_dfs(df_WCM, df_z369, df_trkv):
         df_timeline_z369 = pd.DataFrame()
         df_z369_trated = pd.DataFrame()
 
-    return df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated
+    return df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated
+
+
+def inserir_TBOGI_hist(df_TBOGI_trated):
+    df_TBOGI_trated_histgeral = df_TBOGI_trated.copy()
+    print(df_TBOGI_trated)
+    # 1) Garantir datetime (com hora) na coluna timestamp_received
+    df_TBOGI_trated_histgeral['INICIO'] = pd.to_datetime(
+        df_TBOGI_trated_histgeral['timestamp_received'])
+    df_TBOGI_trated_histgeral['Tipo_Evento'] = "Passagem TBOGI"
+    # + \            df_TBOGI_trated_histgeral['timestamp_received'].astype(str)
+    df_TBOGI_trated_histgeral['Evento'] = "TBOGI"
+
+    df_TBOGI_trated_histgeral['Texto_Completo'] = "max_valor_mod_pd = " + \
+        df_TBOGI_trated_histgeral['max_valor_mod_pd'].astype(str)
+
+    df_TBOGI_trated_histgeral["timestamp_received"] = pd.to_datetime(
+        df_TBOGI_trated_histgeral["timestamp_received"], format="%Y-%m-%d %H:%M")
+    df_TBOGI_trated_histgeral["FIM"] = (
+        df_TBOGI_trated_histgeral["timestamp_received"] +
+        pd.to_timedelta(12, unit="h")
+    )
+    df_TBOGI_trated_histgeral['Tipo_Evento'] = "TBOGI"
+
+    df_TBOGI_total = df_TBOGI_trated_histgeral[[
+        'Evento', 'INICIO', 'FIM', 'Texto_Completo', 'Tipo_Evento']]
+
+    return df_TBOGI_total
 
 
 def inserir_wcm_hist(df_wcm_trated):
@@ -491,11 +632,16 @@ if st.button("Executar função"):
         vg_entrada = tratar_entrada(vg_entrada)
         minha_funcao(vg_entrada)
 
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full = busca_dados(
+        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI = busca_dados(
             vg_entrada)
+        try:
+            df_trkv = tratar_outliers_trkv(df_trkv)
+        except Exception as e:
+            print(f"Erro ao tratar outliers df_trkv: {e}")
 
-        df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated = tratar_dfs(
-            df_WCM, df_z369, df_trkv)
+        print(df_trkv.head())
+        df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
+            df_WCM, df_z369, df_trkv, df_busca_TBOGI)
 
 # ===== CSS Google Material =====
         def resumo_z1568():
@@ -663,16 +809,22 @@ if st.button("Executar função"):
                 print(f"Erro : {e}")
                 df_z1568_timeline = pd.DataFrame()
 
+            try:
+                df_TBOGI_timeline = inserir_TBOGI_hist(df_TBOGI_trated)
+            except Exception as e:
+                print(f"Erro : {e}")
+                df_TBOGI_timeline = pd.DataFrame()
+
             # print(df_z1568_timeline)
 
             print("validation")
 
-            df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,  df_trkv_timeline]
-                                 )
+            df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,
+                                 df_trkv_timeline, df_TBOGI_timeline], ignore_index=True)
             print(df_final)
 
             df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
-                lambda x: "" if x in ["WCM", "trkv"] else x
+                lambda x: "" if x in ["WCM", "trkv", "TBOGI"] else x
             )
 
             df = df_final  # ajustarr
@@ -815,6 +967,7 @@ if st.button("Executar função"):
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
     print("validation2")
+    print(df_trkv_trated)
     try:
         import numpy as np
         import pandas as pd
@@ -848,6 +1001,8 @@ if st.button("Executar função"):
             # ============================
             # 1) Preparar dados
             # ============================
+            df = df[df['STATUS_out'] == "OK"]
+
             x_all = pd.to_datetime(df[col_x], errors="coerce").map(
                 pd.Timestamp.toordinal).values
             y_all = df[col_y].values
@@ -922,12 +1077,20 @@ if st.button("Executar função"):
         print(f"RMSE: {rmse}")
         print(f"MAE: {mae}")
 
+    except Exception as e:
+        print(f"Erro na regressão: {e}")
+        slope = 0
+        intercept = 0
+        r2 = 0
+        rmse = 0
+        mae = 0
+        y_pred = 0
+
 
 # -------------------------------------------------------------------Regressão
-    # df_trkv_trated, r2, mae, rmse = regrecao()
 
-        def plot_Waysides():
-
+    def plot_Waysides():
+        try:
             fig_trkv = go.Figure()
 
             # -------------------------
@@ -976,13 +1139,16 @@ if st.button("Executar função"):
             )
 
             # Range eixo Y
-            fig_trkv.update_yaxes(range=[10, 70])
+            fig_trkv.update_yaxes(range=[10, 90])
+        except Exception as e:
+            print(f"Erro ao plotar gráfico TRKV: {e}")
+            fig_trkv = go.Figure()
 
-            # =========================
-            # WCM
-            # =========================
-
-            df_wcm_trated["Alarme"] = 200
+        # =========================
+        # WCM
+        # =========================
+        try:
+            df_wcm_trated["Alarme"] = 210
 
             fig_wcm = go.Figure()
 
@@ -991,7 +1157,8 @@ if st.button("Executar função"):
                 x=df_wcm_trated["Data"],
                 y=df_wcm_trated["Maior_Impacto_kN"],
                 mode="lines+markers+text",
-                text=df_wcm_trated["Maior_Impacto_kN"].round(1).astype(str),
+                text=df_wcm_trated["Maior_Impacto_kN"].round(
+                    1).astype(str),
                 textposition="top center",
                 name="Maior_Impacto_kN",
                 marker=dict(size=7),
@@ -1016,39 +1183,100 @@ if st.button("Executar função"):
             )
 
             fig_wcm.update_yaxes(range=[0, 300])
-            # =========================
-            # STREAMLIT LAYOUT
-            # =========================
+        except Exception as e:
+            print(f"Erro ao plotar gráfico WCM: {e}")
+            fig_wcm = go.Figure()
 
-            col1, col2 = st.columns(2)
+        # =========================
+        # TBOGI
+        # =========================
+        try:
+            df_TBOGI_trated["Alarme"] = 10
+            df_TBOGI_trated.rename(
+                columns={"timestamp_received": "Data"}, inplace=True)
 
-            with col1:
-                st.subheader("TRKV Cunha Máximo Passagem (mm)")
-                st.plotly_chart(fig_trkv, use_container_width=True)
-                st.markdown(f"""
-                **R²:** `{r2:.4f}`  
-                **MAE:** `{mae:.4f}`  
-                **RMSE:** `{rmse:.4f}`  
-                """)
-                st.dataframe(df_trkv_trated)
+            fig_TBOGI = go.Figure()
 
-            with col2:
+            # Curva principal
+            fig_TBOGI.add_trace(go.Scatter(
+                x=df_TBOGI_trated["Data"],
+                y=df_TBOGI_trated["max_valor_mod_pd"],
+                mode="lines+markers+text",
+                text=df_TBOGI_trated["max_valor_mod_pd"].round(
+                    1).astype(str),
+                textposition="top center",
+                name="max_valor_mod_pd",
+                marker=dict(size=7),
+                line=dict(width=2)
+            ))
 
-                st.subheader("WCM Maior Impacto (kN)")
-                st.plotly_chart(fig_wcm, use_container_width=True)
-                st.markdown(f"""
-                **Alarme Baixo:** `-`   
-                **Alarme Médio:** `-`   
-                **Alarme Alto:** `-`  
-                """)
-                st.dataframe(df_wcm_trated)
+            # Linha de limite
+            fig_TBOGI.add_trace(go.Scatter(
+                x=df_TBOGI_trated["Data"],
+                y=df_TBOGI_trated["Alarme"],
+                mode="lines",
+                name="Alarme 10 ",
+                line=dict(color="red", width=2, dash="dash")
+            ))
 
-                # Plota gráfico de linha
-    # graficos WCM e TRKV
-        plot_Waysides()
+            fig_TBOGI.update_layout(
+                title="TBOGI",
+                xaxis_title="Data",
+                yaxis_title="Valor",
+                template="plotly_white",
+                height=380
+            )
 
-    except Exception as e:
-        print(f"Erro na regressão: {e}")
+            fig_TBOGI.update_yaxes(range=[0, 30])
+        except Exception as e:
+            print(f"Erro ao plotar gráfico TBOGI: {e}")
+            fig_TBOGI = go.Figure()
+        # =========================
+        # STREAMLIT LAYOUT
+        # =========================
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("TRKV Cunha Máximo Passagem ()")
+            st.plotly_chart(fig_trkv, use_container_width=True,
+                            key="plot_trkv")
+            st.markdown(f"""
+            **R²:** `{r2:.4f}`  
+            **MAE:** `{mae:.4f}`  
+            **RMSE:** `{rmse:.4f}`  
+            """)
+            st.dataframe(df_trkv_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
+
+        with col2:
+            st.subheader("WCM Maior Impacto (kN)")
+            st.plotly_chart(fig_wcm, use_container_width=True, key="plot_wcm")
+            st.markdown(f"""
+            **Alarme Baixo:** `-`   
+            **Alarme Médio:** `-`   
+            **Alarme Alto:** `-`  
+            """)
+            st.dataframe(df_wcm_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
+
+        col2_1, col2_2 = st.columns(2)
+
+        with col2_1:
+            st.subheader("TBOGI Módulo Max ()")
+            st.plotly_chart(
+                fig_TBOGI, use_container_width=True, key="plot_tbogi")
+            st.dataframe(df_TBOGI_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
+
+        with col2_2:
+            st.subheader("Detector Acústico")
+            # st.plotly_chart(fig_detector, use_container_width=True, key="plot_detector")
+
+            # Plota gráfico de linha
+# graficos WCM e TRKV
+    plot_Waysides()
+
 
 # ------------------------
     if not df_SAT_TAREFAS_full.empty:
@@ -1268,16 +1496,75 @@ if st.button("Executar função"):
     plotar_TELA_SAT(df_SAT_TAREFAS_full)
 # ------------------------
 
-    st.write("Dados df_164")
+    st.markdown("## Dados df_164")
     st.dataframe(df_164)
-    st.write("Dados z369")
-    st.dataframe(df_z369)
-    st.write("Dados WCM")
-    st.dataframe(df_WCM)
-    st.write("Dados TRKV")
-    st.dataframe(df_trkv)
-    st.write("Dados z851")
+    st.markdown("## Dados z369")
+    colunas_z369 = [
+        "NOTA",
+        "ATIVO",
+        "MODELO",
+        "dt_abertura_trated",
+        "dt_fechamento_trated",
+        "STATUS",
+        "TP NOTA",
+        "TEXTO",
+        "TEXTO AVARIA",
+        "TEXTO CAUSA",
+        "Flag"
+    ]
+    df_z369['dt_abertura_trated'] = (
+        pd.to_datetime(df_z369['dt_abertura_trated'])
+        .dt.strftime("%d/%m/%Y")
+    )
+
+    df_z369['dt_fechamento_trated'] = (
+        pd.to_datetime(df_z369['dt_fechamento_trated'])
+        .dt.strftime("%d/%m/%Y")
+    )
+    st.dataframe(df_z369[colunas_z369].sort_values(
+        by="dt_abertura_trated", ascending=False).reset_index(drop=True))
+
+    st.markdown("## Dados WCM")
+
+    colunas_zWCM = [
+        "json_header",
+        "json_Identificação do veículo",
+        "json_Força de pico de impacto da roda (kN)",
+        "Data",
+        "json_trem_TrainTime",
+        "json_Lateral da linha",
+        "json_trem_L_Dir",
+        "json_Tipo do veículo"
+    ]
+    st.dataframe(df_WCM[colunas_zWCM].sort_values(
+        by="Data", ascending=False).reset_index(drop=True))
+
+    st.markdown("## Dados TRKV")
+
+    colunas_TRKV = [
+        "Header_TrainSequenceNumber_int",
+        "CarOrientation",
+        "CarIDInitial",
+        "CarIDNumber",
+        "max_valor",
+        "A#L_1",
+        "A#L_2",
+        "A#R_1",
+        "A#R_2",
+        "B#L_1",
+        "B#L_2",
+        "B#R_1",
+        "B#R_2",
+        "STATUS_out"
+    ]
+
+    st.dataframe(
+        df_trkv[colunas_TRKV]
+        .sort_values(by="max_valor", ascending=False)
+        .reset_index(drop=True)
+    )
+    st.markdown("## Dados z851")
     st.dataframe(df_z851)
-    st.write("Dados z1568")
+    st.markdown("## Dados z1568")
     st.dataframe(df_z1568)
 # Tela -----------------------

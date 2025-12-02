@@ -714,8 +714,6 @@ df_new3 = concatenar_dados_new2_z369(df_new2, df_z369)
 
 df_new3["SERIE"] = df_new3["VAGAO"].str[-3:]
 # df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
-
-df_base_concatenada = df_new2
 df_base_concatenada = df_new3
 df_base_concatenada = traduzir_STATUS(df_base_concatenada)
 
