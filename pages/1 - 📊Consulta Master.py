@@ -1262,7 +1262,7 @@ if st.button("Executar função"):
         col2_1, col2_2 = st.columns(2)
 
         with col2_1:
-            st.subheader("TBOGI Módulo Max (mm)")
+            st.subheader("TBOGI Módulo Max ()")
             st.plotly_chart(
                 fig_TBOGI, use_container_width=True, key="plot_tbogi")
             st.dataframe(df_TBOGI_trated.sort_values(
