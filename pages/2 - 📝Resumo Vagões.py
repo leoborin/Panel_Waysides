@@ -816,13 +816,13 @@ with col1:
     filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=["Todos"] + lista_equnr, index=0)
 
 with col2:
-    filtro_serie = st.selectbox("Filtrar por Série:", options=["Todos"] + lista_serie, index=0)
+    filtro_serie = st.multiselect("Filtrar por Série:", options=lista_serie, placeholder='Escolha a Série')
 
 with col3:
-    filtro_modelo = st.selectbox("Filtrar por Modelo:", options=["Todos"] + lista_modelo, index=0)
+    filtro_modelo = st.multiselect("Filtrar por Modelo:", options=lista_modelo, placeholder='Escolha o Modelo')
 
 with col4:
-    filtro_status = st.multiselect("Filtrar por Status:", options=lista_status, placeholder='Escolha os Status')
+    filtro_status = st.multiselect("Filtrar por Status:", options=lista_status, placeholder='Escolha o Status')
 
 # ✅ Aplicar todos os filtros simultaneamente
 df_filtrado = df_base_concatenada.copy()
@@ -830,11 +830,11 @@ df_filtrado = df_base_concatenada.copy()
 if filtro_equnr != "Todos":
     df_filtrado = df_filtrado[df_filtrado["EQUNR"] == filtro_equnr]
 
-if filtro_serie != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["SERIE"] == filtro_serie]
+if filtro_serie:
+    df_filtrado = df_filtrado[df_filtrado["SERIE"].isin(filtro_serie)]
 
-if filtro_modelo != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["MODELO"] == filtro_modelo]
+if filtro_modelo:
+    df_filtrado = df_filtrado[df_filtrado["MODELO"].isin(filtro_modelo)]
 
 if filtro_status:  # Se houver seleção
     df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(filtro_status)]
