@@ -83,27 +83,49 @@ def tratar_outliers_trkv(df):
 
 def busca_dados(vagao):
     def busca_TBOGI(vagao):
-        # Conexão com o MongoDB
-        vagao = int(vagao)
-        client = MongoClient(
-            MONGO_URI)
+        try:
+            vagao = int(vagao)
+            client = MongoClient(MONGO_URI)
 
-        # Definição do filtro
-        filter = {'car_num': re.compile(f"{vagao}")}
+            # -----------------------------------------
+            # 1) Filtro seguro (busca exata, não parcial)
+            # -----------------------------------------
 
-        # Consulta
-        cursor = client[DB_NAME]['tbogi_treated'].find(
-            filter)
+            filter = {'car_num': re.compile(f"{vagao}")}
 
-        # Converter o cursor em lista e depois em DataFrame
-        df = pd.DataFrame(list(cursor))
-        df["valor_mod_pd"] = df["tp"].abs()
+            cursor = client[DB_NAME]["tbogi_treated"].find(filter)
 
-        # (Opcional) Remover a coluna _id, se não for necessária
-        if '_id' in df.columns:
-            df.drop('_id', axis=1, inplace=True)
+            # -----------------------------------------
+            # 2) Converter cursor → DataFrame
+            # -----------------------------------------
+            df = pd.DataFrame(list(cursor))
 
-        return df
+            # Se cursor vazio → retorna df vazio
+            if df.empty:
+                print("TBOGI: Nenhum registro encontrado → retornando df vazio")
+                return pd.DataFrame()
+
+            # -----------------------------------------
+            # 3) Criar coluna valor_mod_pd (proteção caso 'tp' não exista)
+            # -----------------------------------------
+            if "tp" in df.columns:
+                df["valor_mod_pd"] = df["tp"].abs()
+            else:
+                print(
+                    "TBOGI: coluna 'tp' não encontrada — adicionando valor_mod_pd = NaN")
+                df["valor_mod_pd"] = np.nan
+
+            # -----------------------------------------
+            # 4) Remover _id se existir
+            # -----------------------------------------
+            df.drop(columns=["_id"], errors="ignore", inplace=True)
+
+            return df
+
+        except Exception as e:
+            # Captura qualquer erro e retorna df vazio
+            print(f"Erro ao consultar TBOGI: {e}")
+            return pd.DataFrame()
 
     def busca_z1568(vagao):
         # Conexão com o MongoDB
@@ -1215,38 +1237,40 @@ if st.button("Executar função"):
         col1, col2 = st.columns(2)
 
         with col1:
-
             st.subheader("TRKV Cunha Máximo Passagem ()")
-            st.plotly_chart(fig_trkv, use_container_width=True)
+            st.plotly_chart(fig_trkv, use_container_width=True,
+                            key="plot_trkv")
             st.markdown(f"""
             **R²:** `{r2:.4f}`  
             **MAE:** `{mae:.4f}`  
             **RMSE:** `{rmse:.4f}`  
             """)
-
-            st.dataframe(df_trkv_trated)
+            st.dataframe(df_trkv_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
 
         with col2:
-
             st.subheader("WCM Maior Impacto (kN)")
-            st.plotly_chart(fig_wcm, use_container_width=True)
+            st.plotly_chart(fig_wcm, use_container_width=True, key="plot_wcm")
             st.markdown(f"""
             **Alarme Baixo:** `-`   
             **Alarme Médio:** `-`   
             **Alarme Alto:** `-`  
             """)
-            st.dataframe(df_wcm_trated)
+            st.dataframe(df_wcm_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
 
         col2_1, col2_2 = st.columns(2)
-        with col2_1:
 
+        with col2_1:
             st.subheader("TBOGI Módulo Max (mm)")
-            st.plotly_chart(fig_TBOGI, use_container_width=True)
-            st.dataframe(df_TBOGI_trated)
+            st.plotly_chart(
+                fig_TBOGI, use_container_width=True, key="plot_tbogi")
+            st.dataframe(df_TBOGI_trated.sort_values(
+                by="Data", ascending=False).reset_index(drop=True))
 
         with col2_2:
-
             st.subheader("Detector Acústico")
+            # st.plotly_chart(fig_detector, use_container_width=True, key="plot_detector")
 
             # Plota gráfico de linha
 # graficos WCM e TRKV
@@ -1471,7 +1495,7 @@ if st.button("Executar função"):
     plotar_TELA_SAT(df_SAT_TAREFAS_full)
 # ------------------------
 
-    st.write("Dados df_164")
+    st.markdown("## Dados df_164")
     st.dataframe(df_164)
     st.markdown("## Dados z369")
     colunas_z369 = [
@@ -1487,14 +1511,59 @@ if st.button("Executar função"):
         "TEXTO CAUSA",
         "Flag"
     ]
+    df_z369['dt_abertura_trated'] = (
+        pd.to_datetime(df_z369['dt_abertura_trated'])
+        .dt.strftime("%d/%m/%Y")
+    )
+
+    df_z369['dt_fechamento_trated'] = (
+        pd.to_datetime(df_z369['dt_fechamento_trated'])
+        .dt.strftime("%d/%m/%Y")
+    )
     st.dataframe(df_z369[colunas_z369].sort_values(
         by="dt_abertura_trated", ascending=False).reset_index(drop=True))
-    st.write("Dados WCM")
-    st.dataframe(df_WCM)
-    st.write("Dados TRKV")
-    st.dataframe(df_trkv)
-    st.write("Dados z851")
+
+    st.markdown("## Dados WCM")
+
+    colunas_zWCM = [
+        "json_header",
+        "json_Identificação do veículo",
+        "json_Força de pico de impacto da roda (kN)",
+        "Data",
+        "json_trem_TrainTime",
+        "json_Lateral da linha",
+        "json_trem_L_Dir",
+        "json_Tipo do veículo"
+    ]
+    st.dataframe(df_WCM[colunas_zWCM].sort_values(
+        by="Data", ascending=False).reset_index(drop=True))
+
+    st.markdown("## Dados TRKV")
+
+    colunas_TRKV = [
+        "Header_TrainSequenceNumber_int",
+        "CarOrientation",
+        "CarIDInitial",
+        "CarIDNumber",
+        "max_valor",
+        "A#L_1",
+        "A#L_2",
+        "A#R_1",
+        "A#R_2",
+        "B#L_1",
+        "B#L_2",
+        "B#R_1",
+        "B#R_2",
+        "STATUS_out"
+    ]
+
+    st.dataframe(
+        df_trkv[colunas_TRKV]
+        .sort_values(by="max_valor", ascending=False)
+        .reset_index(drop=True)
+    )
+    st.markdown("## Dados z851")
     st.dataframe(df_z851)
-    st.write("Dados z1568")
+    st.markdown("## Dados z1568")
     st.dataframe(df_z1568)
 # Tela -----------------------

@@ -83,6 +83,7 @@ def salvar_tudo_threadpool(dfs, paths):
 
 
 def busca_dados(vagao):
+
     def busca_z1568(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
