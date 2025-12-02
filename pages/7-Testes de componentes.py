@@ -45,25 +45,25 @@ col3, col4 = st.columns(2)
 with col1:
         st.subheader("Gráfico 1 - Linha 📈")
         fig1 = px.line(df, x="x", y="y", markers=True, title="Série temporal")
-        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig1, width='stretch')
 
 with col2:
         st.subheader("Gráfico 2 - Barras 📊")
         fig2 = px.bar(df, x="categoria", y="y",
                       title="Distribuição por categoria")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width='stretch')
 
 with col3:
         st.subheader("Gráfico 3 - Histograma 📦")
         fig3 = px.histogram(df, x="y", nbins=5,
                             title="Distribuição dos valores")
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, width='stretch')
 
 with col4:
         st.subheader("Gráfico 4 - Pizza 🥧")
         fig4 = px.pie(df.head(5), values="y", names="categoria",
                       title="Top 5 categorias")
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig4, width='stretch')
 
 # Defina o estilo CSS para o contêiner
 st.markdown("""
@@ -251,3 +251,4 @@ TRKV - qual a ultima medição valida de cada vagão \n
          Não precisa de outra tabela\n
 WCM - qual a ultima medição valida de cada vagão \n
          Não precisa de outra tabela\n""")
+

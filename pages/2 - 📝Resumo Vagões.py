@@ -867,7 +867,7 @@ df_display = df_filtrado_com_link[colunas]
 st.markdown("### Dados Concatenados e Tratados")
 st.dataframe(
     df_display,
-    use_container_width=True,
+    width='stretch',
     hide_index=True,
     height=600,
     column_config={

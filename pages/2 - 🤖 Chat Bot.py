@@ -146,7 +146,7 @@ if user_msg:
                 st.markdown(texto_sem_json)
 
             df = _format_date_columns(df)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.markdown(
                 texto_sem_json if texto_sem_json else response_text)
