@@ -21,9 +21,6 @@ DB_NAME = "supervisorio"
 COLLECTION_NAME = "z369_full"
 
 st.set_page_config(layout="wide")
-
-st.sidebar.markdown("### 2 - 📝Resumo Vagões.py")
-
 # app.py
 warnings.filterwarnings("ignore")
 
