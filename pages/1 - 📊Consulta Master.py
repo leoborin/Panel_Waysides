@@ -916,7 +916,7 @@ if st.button("Executar função"):
             #legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
             #)
             
-            st.plotly_chart(fig, config={"responsive": True})
+            st.plotly_chart(fig, width="stretch")
 
         plotar_gaph_resumo()
 # -------------------------------------------------------------------RESUMO
