@@ -912,6 +912,9 @@ if st.button("Executar função"):
             )
 
             fig.update_yaxes(autorange="reversed")
+            fig.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+            )
 
             st.plotly_chart(fig, width="content")
 
