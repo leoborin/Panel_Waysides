@@ -25,12 +25,14 @@ with open("css/style.css", "r", encoding="utf-8") as f:
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
+MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
-col_logo, col_titulo = st.columns([1,3])
+col_logo, col_titulo = st.columns([1, 3])
 with col_logo:
     st.image("assets/vg666.png", width=100)
 with col_titulo:
@@ -177,7 +179,7 @@ def busca_dados(vagao):
     def busca_wcm(vagao):
         # Conexão com o MongoDB
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
         vagao_str = str(vagao)
         # Pipeline de agregação
         pipeline = [
@@ -209,7 +211,7 @@ def busca_dados(vagao):
         ]
 
         # Executa a agregação
-        result = client[DB_NAME]['WCM'].aggregate(pipeline)
+        result = client[DB_NAME_PRD]['WCM'].aggregate(pipeline)
 
         # Converte o resultado em DataFrame
         df = pd.DataFrame(list(result))
@@ -627,7 +629,7 @@ def tratar_entrada(codigo: str) -> str:
 # Tela -----------------------
 # Campo de entrada de texto
 st.container(height=50, border=False)
-vg_entrada = st.text_input("Digite o vagão:", value=eqnr, key= 'text_input_CM')
+vg_entrada = st.text_input("Digite o vagão:", value=eqnr, key='text_input_CM')
 
 # Botão que executa a função
 if st.button("Executar função"):
@@ -721,13 +723,15 @@ if st.button("Executar função"):
                 'ULTIMA_RI',
                 'ULTIMA_RR'
             ]
-            df_z851_copia['DATA_FIM_trated'] = df_z851_copia['DATA_FIM_trated'].fillna('-')
+            df_z851_copia['DATA_FIM_trated'] = df_z851_copia['DATA_FIM_trated'].fillna(
+                '-')
             # Converte e formata todas as colunas para dd-mm-yyyy
             df_z851_copia[colunas_data] = df_z851_copia[colunas_data].apply(
-                lambda x: pd.to_datetime(x, errors='coerce').dt.strftime('%d-%m-%Y')
+                lambda x: pd.to_datetime(
+                    x, errors='coerce').dt.strftime('%d-%m-%Y')
             )
-            #df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'].astype(int)
-            
+            # df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'].astype(int)
+
             df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = (
                 df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG']
                 .round()                # arredonda
@@ -735,26 +739,25 @@ if st.button("Executar função"):
                 .apply(lambda x: f"{x:,}".replace(",", ".")))
 
             df_z851_copia.rename(columns={
-            'EQUNR': 'Ativo',
-            'DATA_DE_FABRICACAO_trated': 'Data de Fabricação',
-            'DATA_FIM_trated': 'Data de Desativação',
-            'DATA_GARANTIA_trated': 'Data de Garantia do Ativo',
-            'ULTIMA_RG': 'Última RG',
-            'ULTIMA_RI': 'Última RI',
-            'ULTIMA_RR': 'Última RR',
-            'KM_RODADO_DESDE_ULTIMA_RG': 'KM Rodado desde última RG',
-            'BITOLA':'Bitola',
-            'MALHA': 'Malha',
-            'MODELO': 'Modelo',
-            'STATUS': 'Status'
+                'EQUNR': 'Ativo',
+                'DATA_DE_FABRICACAO_trated': 'Data de Fabricação',
+                'DATA_FIM_trated': 'Data de Desativação',
+                'DATA_GARANTIA_trated': 'Data de Garantia do Ativo',
+                'ULTIMA_RG': 'Última RG',
+                'ULTIMA_RI': 'Última RI',
+                'ULTIMA_RR': 'Última RR',
+                'KM_RODADO_DESDE_ULTIMA_RG': 'KM Rodado desde última RG',
+                'BITOLA': 'Bitola',
+                'MALHA': 'Malha',
+                'MODELO': 'Modelo',
+                'STATUS': 'Status'
             }, inplace=True)
 
-
             m_bitola = {'L': 'Larga', 'M': 'Métrica'}
-            m_malha  = {'N': 'Norte', 'S': 'Sul'}
-            m_status = {'1': 'Disponível', '2': 'Retido', '3':'Indisponível ou Eliminado'}
+            m_malha = {'N': 'Norte', 'S': 'Sul'}
+            m_status = {'1': 'Disponível', '2': 'Retido',
+                        '3': 'Indisponível ou Eliminado'}
             m_data_desativacao = {'None': '-'}
-
 
             df_z851_copia.replace({
                 'Bitola': m_bitola,
@@ -762,10 +765,6 @@ if st.button("Executar função"):
                 'Status': m_status,
                 'DATA_FIM_trated': m_data_desativacao
             }, inplace=True)
-
-            
-            
-
 
             row = df_z851_copia.iloc[0]
             campos = [
@@ -970,9 +969,10 @@ if st.button("Executar função"):
 
             fig.update_yaxes(autorange="reversed")
             fig.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+                # legenda horizontal abaixo do gráfico
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
             )
-        
+
             st.plotly_chart(fig, width="stretch")
 
         plotar_gaph_resumo()
@@ -1149,6 +1149,7 @@ if st.button("Executar função"):
 
 # -------------------------------------------------------------------Regressão
 
+
     def plot_Waysides():
         try:
             fig_trkv = go.Figure()
@@ -1300,7 +1301,8 @@ if st.button("Executar função"):
         with col1:
             st.subheader("TRKV Cunha Máximo Passagem ()")
             fig_trkv.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+                # legenda horizontal abaixo do gráfico
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
             )
             st.plotly_chart(fig_trkv, width="stretch",
                             key="plot_trkv")
@@ -1315,7 +1317,8 @@ if st.button("Executar função"):
         with col2:
             st.subheader("WCM Maior Impacto (kN)")
             fig_wcm.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+                # legenda horizontal abaixo do gráfico
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
             )
             st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
             st.markdown(f"""
@@ -1331,7 +1334,8 @@ if st.button("Executar função"):
         with col2_1:
             st.subheader("TBOGI Módulo Max ()")
             fig_TBOGI.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3)  # legenda horizontal abaixo do gráfico
+                # legenda horizontal abaixo do gráfico
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
             )
             st.plotly_chart(
                 fig_TBOGI, width="stretch", key="plot_tbogi")

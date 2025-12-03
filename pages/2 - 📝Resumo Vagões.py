@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import plotly.express as px
 # Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
-COLLECTION_NAME = "z369_full"
+# MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+# DB_NAME = "supervisorio"
+# #COLLECTION_NAME = "z369_full"
 
 st.set_page_config(layout="wide")
 # app.py
@@ -28,6 +28,8 @@ with open("css/style.css", "r", encoding="utf-8") as f:
 
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
+MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
 
@@ -142,7 +144,7 @@ def busca_dados(vagao):
 
         # Conexão com o MongoDB
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         data_limite = data_mais_recente
 
@@ -179,7 +181,7 @@ def busca_dados(vagao):
         ]
 
         # Executa a agregação
-        result = client[DB_NAME]['WCM'].aggregate(pipeline)
+        result = client[DB_NAME_PRD]['WCM'].aggregate(pipeline)
 
         # Converte o resultado em DataFrame
         df = pd.DataFrame(list(result))
@@ -189,13 +191,15 @@ def busca_dados(vagao):
             df = pd.json_normalize(df['json_documents'])
 
         df_final = pd.concat([df_WCM, df], ignore_index=True).drop_duplicates()
+        df_final["json_trem_TrainTime"] = df_final["json_trem_TrainTime"].astype(
+            str)
 
         return df_final
 
     def busca_z369(vagao):
         # Conexão com o MongoDB
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         vagao_str = str(vagao)
 
@@ -203,7 +207,7 @@ def busca_dados(vagao):
         filter = {"STATUS": "MSPN"}
 
         # Consulta
-        cursor = client[DB_NAME]['z369_trated'].find(filter)
+        cursor = client[DB_NAME_PRD]['SAP_z369_notas'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
@@ -795,6 +799,7 @@ if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
         salvar_tudo_threadpool(dfs, paths)
 
     st.success("Arquivos salvos com sucesso! ✅")
+    st.rerun()
 
 # =============================
 # Filtro – EQUNR
@@ -811,16 +816,20 @@ lista_status = sorted(df_base_concatenada["STATUS"].unique())
 
 # Capturar seleções (sem aplicar ainda)
 with col1:
-    filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=["Todos"] + lista_equnr, index=0)
+    filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=[
+                                "Todos"] + lista_equnr, index=0)
 
 with col2:
-    filtro_serie = st.multiselect("Filtrar por Série:", options=lista_serie, placeholder='Escolha a Série')
+    filtro_serie = st.multiselect(
+        "Filtrar por Série:", options=lista_serie, placeholder='Escolha a Série')
 
 with col3:
-    filtro_modelo = st.multiselect("Filtrar por Modelo:", options=lista_modelo, placeholder='Escolha o Modelo')
+    filtro_modelo = st.multiselect(
+        "Filtrar por Modelo:", options=lista_modelo, placeholder='Escolha o Modelo')
 
 with col4:
-    filtro_status = st.multiselect("Filtrar por Status:", options=lista_status, placeholder='Escolha o Status')
+    filtro_status = st.multiselect(
+        "Filtrar por Status:", options=lista_status, placeholder='Escolha o Status')
 
 # ✅ Aplicar todos os filtros simultaneamente
 df_filtrado = df_base_concatenada.copy()
@@ -840,15 +849,18 @@ if filtro_status:  # Se houver seleção
 col_WCM, col_TRKV = st.columns(2)
 
 with col_WCM:
-    values = st.slider("Selecione um range para os valores de WCM", 0, 200, (0, 200), key='slider_WCM')
-    df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0]) 
-                          & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
+    values = st.slider("Selecione um range para os valores de WCM",
+                       0, 500, (0, 500), key='slider_WCM')
+    df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0])
+                              & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
 
 with col_TRKV:
-    values1 = st.slider("Selecione um range para os valores de TRKV", 0, 200, (0, 200), key='slider_TRKV')
-    df_filtrado = df_filtrado[(df_filtrado["TRKV_max_medicao_ultimas_3"] >= values1[0]) 
-                          & (df_filtrado["TRKV_max_medicao_ultimas_3"] <= values1[1])]
+    values1 = st.slider("Selecione um range para os valores de TRKV",
+                        0, 200, (0, 200), key='slider_TRKV')
+    df_filtrado = df_filtrado[(df_filtrado["TRKV_max_medicao_ultimas_3"] >= values1[0])
+                              & (df_filtrado["TRKV_max_medicao_ultimas_3"] <= values1[1])]
 # ===========================================
+
 
 def create_EQUNR_link(equnr):
     """Cria link com o valor da EQUNR"""
