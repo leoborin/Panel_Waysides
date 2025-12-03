@@ -11,7 +11,9 @@ DB_NAME = "supervisorio"
 COLLECTION_NAME = "z369_full"
 
 st.set_page_config(layout="wide")
-
+with open("css/style.css", "r", encoding="utf-8") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    
 #-------------------------------------------------------------------------------------
 #Importar DADOS
 @st.cache_data(ttl=600)

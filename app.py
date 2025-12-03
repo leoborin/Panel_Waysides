@@ -3,7 +3,7 @@ from PIL import Image
 # Configurações MongoDB
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"
-with open("css/style.css") as f:
+with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 st.set_page_config(layout="wide")
@@ -14,32 +14,6 @@ st.markdown("<h1 style='text-align: center;'>👋 Bem vindo ao Portal de Intelig
             unsafe_allow_html=True)
 st.markdown("""
     <style>
-        header {
-            background-color: #32A6E6 !important; /* Cor azul */
-            height: 60px !important; /* Ajusta altura */
-            color: white !important; /* Cor do texto */
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        header .st-emotion-cache-1dp5vir { /* Remove logo padrão se quiser */
-            display: none;
-        }
-        header:before {
-            
-            content: 'RailCenter - Inteligência de Dados';
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            display: block;
-            width: 100%; /* Ocupa toda a largura disponível */
-            text-align: left; /* Alinha à esquerda */
-            padding-left: 20px; /* Espaço interno */
-            white-space: nowrap; /* Evita quebra de linha */
-        }
         .card-button {
     background-color: #F0E8E6;
     border-radius: 10px;

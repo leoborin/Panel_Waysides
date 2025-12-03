@@ -23,7 +23,8 @@ COLLECTION_NAME = "z369_full"
 st.set_page_config(layout="wide")
 # app.py
 warnings.filterwarnings("ignore")
-
+with open("css/style.css", "r", encoding="utf-8") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
 DB_NAME = "supervisorio"

@@ -14,6 +14,9 @@ st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 
+with open("css/style.css", "r", encoding="utf-8") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 pipeline1 = [ {
       "$project": {
         "Documento": 0,

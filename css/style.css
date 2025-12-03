@@ -92,3 +92,35 @@
   background-color: lab(92.77% 0.34 0.11 / 0.926);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
+
+header {
+  background-color: #32A6E6 !important; /* Cor azul */
+  height: 60px !important; /* Ajusta altura */
+  color: white !important; /* Cor do texto */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 20px;
+  font-weight: bold;
+}
+header .st-emotion-cache-1dp5vir { /* Remove logo padrão se quiser */
+  display: none;
+}
+header:before {
+  
+  content: 'RailCenter - Inteligência de Dados';
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  display: block;
+  width: 100%; /* Ocupa toda a largura disponível */
+  text-align: left; /* Alinha à esquerda */
+  padding-left: 20px; /* Espaço interno */
+  white-space: nowrap; /* Evita quebra de linha */
+}
+
+.st-key-text_input_CM p{
+  font-size: 18px;
+  font-weight: bold;
+}

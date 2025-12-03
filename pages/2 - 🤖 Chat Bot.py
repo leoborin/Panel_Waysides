@@ -10,6 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
+with open("css/style.css", "r", encoding="utf-8") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
 WEBHOOK_URL = "http://35.185.213.101/webhook/chatbot"
 
 # -----------------------------
