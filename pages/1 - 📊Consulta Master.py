@@ -24,10 +24,10 @@ with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Configurações MongoDB
-MONGO_URI = st.secrets.database_dev.MONGO_URI
-DB_NAME = st.secrets.database_dev.DB_NAME
-MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
-DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+DB_NAME = "supervisorio"
+MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
@@ -1307,23 +1307,6 @@ if st.button("Executar função"):
 
         with col1:
             st.subheader("TRKV Cunha Máximo Passagem (mm)")
-            
-            MAP_WEDGE = {
-                2: "Ride Control",
-                3: "Barber",
-                4: "Ride Master",
-                5: "Motion Control",
-            }
-
-            code = df_trkv["WedgeTypeCode"].iloc[0]
-
-            # trata NaN e 0 como inválido
-            if pd.isna(code) or code == 0:
-                label = "inválido"
-            else:
-                label = MAP_WEDGE.get(int(code), "inválido")  # int() se o dtype vier float
- 
-            st.markdown(f'Tipo de Truque:  {label}')
             fig_trkv.update_layout(
                 # legenda horizontal abaixo do gráfico
                 legend=dict(orientation="h", yanchor="bottom", y=-0.3)
