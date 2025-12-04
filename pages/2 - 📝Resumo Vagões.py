@@ -88,13 +88,13 @@ def busca_dados(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         # Definição do filtro
         filter = {}
 
         # Consulta
-        cursor = client[DB_NAME]['z1568_Liberacoes_Retencoes_full'].find(
+        cursor = client[DB_NAME_PRD]['z1568_Liberacoes_Retencoes_full'].find(
             filter)
 
         # Converter o cursor em lista e depois em DataFrame
@@ -110,13 +110,13 @@ def busca_dados(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         # Definição do filtro
         filter = {}
 
         # Consulta
-        cursor = client[DB_NAME]['CadastroVagoes_full'].find(filter)
+        cursor = client[DB_NAME_PRD]['CadastroVagoes_full'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
@@ -257,13 +257,14 @@ def busca_dados(vagao):
         vagao = str(vagao)
 
         # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI_PRD)
 
         # Filtro usando o parâmetro recebido
         filter_query = {}
 
         # Consulta com limit = 1
-        cursor = client[DB_NAME]['tela164_full'].find(filter_query, limit=1)
+        cursor = client[DB_NAME_PRD]['tela164_full'].find(
+            filter_query, limit=1)
 
         # Converter cursor para DataFrame
         df = pd.DataFrame(list(cursor))
@@ -282,13 +283,13 @@ def busca_dados(vagao):
         vagao = str(vagao)
 
         # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI_PRD)
 
         # Filtro usando o parâmetro recebido
         filter_query = {'EQUNR': re.compile(f"{vagao}")}
 
         # Consulta com limit = 1
-        cursor = client[DB_NAME]['SAT_TAREFAS_full'].find(
+        cursor = client[DB_NAME_PRD]['SAT_TAREFAS_full'].find(
             filter_query)
 
         # Converter cursor para DataFrame

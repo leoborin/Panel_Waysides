@@ -11,8 +11,9 @@ from datetime import datetime
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import warnings
+warnings.filterwarnings("ignore")
 
-import streamlit as st
 
 eqnr = st.query_params.get("eqnr")
 
@@ -55,7 +56,7 @@ def tratar_outliers_trkv(df):
     """
     df["key"] = df["CarIDNumber"].astype(int)
     df["timestr"] = pd.to_datetime(
-        df["timestr"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
+        df["timestr"],  errors="coerce")
     df = df.sort_values(["key", "timestr"])
 
     # Cálculo da força máxima entre os 8 sensores
@@ -137,13 +138,13 @@ def busca_dados(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         # Definição do filtro
         filter = {'ATIVO': re.compile(f"{vagao}")}
 
         # Consulta
-        cursor = client[DB_NAME]['z1568_Liberacoes_Retencoes_full'].find(
+        cursor = client[DB_NAME_PRD]['SAP_z1568_LiberacoesRetencoes'].find(
             filter)
 
         # Converter o cursor em lista e depois em DataFrame
@@ -159,13 +160,13 @@ def busca_dados(vagao):
         # Conexão com o MongoDB
         vagao = int(vagao)
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         # Definição do filtro
         filter = {'EQUNR': re.compile(f"{vagao}")}
 
         # Consulta
-        cursor = client[DB_NAME]['CadastroVagoes_full'].find(filter)
+        cursor = client[DB_NAME_PRD]['SAP_z851_CadastroVagoes'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
@@ -225,15 +226,15 @@ def busca_dados(vagao):
     def busca_z369(vagao):
         # Conexão com o MongoDB
         client = MongoClient(
-            MONGO_URI)
+            MONGO_URI_PRD)
 
         vagao_str = str(vagao)
 
         # Definição do filtro
-        filter = {"ATIVO_tratado": vagao_str}
+        filter = {"ATIVO": {"$regex": vagao_str}}
 
         # Consulta
-        cursor = client[DB_NAME]['z369_trated'].find(filter)
+        cursor = client[DB_NAME_PRD]['SAP_z369_notas'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
@@ -258,6 +259,7 @@ def busca_dados(vagao):
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
+        print(df[['CarIDNumber', 'timestr']].head())
 
         # (Opcional) Remover a coluna _id, se não for necessária
         if '_id' in df.columns:
@@ -273,13 +275,14 @@ def busca_dados(vagao):
         vagao = str(vagao)
 
         # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI_PRD)
 
         # Filtro usando o parâmetro recebido
         filter_query = {'VAGAO': re.compile(f"{vagao}")}
 
         # Consulta com limit = 1
-        cursor = client[DB_NAME]['tela164_full'].find(filter_query, limit=1)
+        cursor = client[DB_NAME_PRD]['Translogic_Tela_164_Foto'].find(
+            filter_query, limit=1)
 
         # Converter cursor para DataFrame
         df = pd.DataFrame(list(cursor))
@@ -298,13 +301,13 @@ def busca_dados(vagao):
         vagao = str(vagao)
 
         # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI_PRD)
 
         # Filtro usando o parâmetro recebido
         filter_query = {'EQUNR': re.compile(f"{vagao}")}
 
         # Consulta com limit = 1
-        cursor = client[DB_NAME]['SAT_TAREFAS_full'].find(
+        cursor = client[DB_NAME_PRD]['SAT_TAREFAS_full'].find(
             filter_query)
 
         # Converter cursor para DataFrame
@@ -378,7 +381,7 @@ def busca_dados(vagao):
 
 
 def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
-    def tratar_trkv(df_busca_TBOGI):
+    def tratar_tbogi(df_busca_TBOGI):
         df_resumo = (
             df_busca_TBOGI.groupby("timestamp_received", as_index=False)[
                 "valor_mod_pd"]
@@ -389,48 +392,42 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
         return df_resumo
 
     try:
-        df_TBOGI_trated = tratar_trkv(df_busca_TBOGI)
+        df_TBOGI_trated = tratar_tbogi(df_busca_TBOGI)
     except Exception as e:
         print(f"Erro ao tratar df_TBOGI: {e}")
         df_TBOGI_trated = pd.DataFrame()
 
     def tratar_trkv(df_trkv):
 
+        print(df_trkv[['CarIDNumber', 'timestr']].head())
+
         # Criar coluna Data
         df_trkv['Data'] = df_trkv['timestr'].dt.date
 
-        # Colunas de impacto
         colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
                            "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
 
-        # Substituir zeros por NaN
         df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(0, np.nan)
 
-        # Maior impacto por linha
-        df_trkv['Maior_Impacto_Linha'] = df_trkv[colunas_impacto].max(
-            axis=1, skipna=True)
+        df_trkv['Maior_Impacto_Linha'] = df_trkv[colunas_impacto].max(axis=1)
 
-        # Se não existir STATUS_out (por exemplo antes de tratar outliers), cria como OK
         if "STATUS_out" not in df_trkv.columns:
             df_trkv["STATUS_out"] = "OK"
 
-        # --- AGRUPAMENTO POR DIA ---
+        # 🔥 AGRUPAR POR key + Data (corrige seu problema)
         df_trkv_max = (
-            df_trkv.groupby("Data", as_index=False)
+            df_trkv.groupby(["key", "Data"], as_index=False)
             .agg({
                 "Maior_Impacto_Linha": "max",
-                # Regra: se existir qualquer "DESCARTAR" no dia → dia é DESCARTAR
                 "STATUS_out": lambda x: "DESCARTAR" if "DESCARTAR" in x.values else "OK"
             })
-            .rename(columns={"Maior_Impacto_Linha": "Maior_Impacto_Diario"})
-            .sort_values(by="Data")
+            .rename(columns={"Maior_Impacto_Linha": "TRKV_MAX_Cunha"})
+            .sort_values(by=["key", "Data"])
         )
 
-        # Formatar valor final
-        df_trkv_max["TRKV_MAX_Cunha"] = df_trkv_max["Maior_Impacto_Diario"].round(
-            2)
+        df_trkv_max["TRKV_MAX_Cunha"] = df_trkv_max["TRKV_MAX_Cunha"].round(2)
 
-        return df_trkv_max[["Data", "TRKV_MAX_Cunha", "STATUS_out"]]
+        return df_trkv_max[["key", "Data", "TRKV_MAX_Cunha", "STATUS_out"]]
     try:
         df_trkv_trated = tratar_trkv(df_trkv)
     except Exception as e:
@@ -500,7 +497,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
 
 def inserir_TBOGI_hist(df_TBOGI_trated):
     df_TBOGI_trated_histgeral = df_TBOGI_trated.copy()
-    print(df_TBOGI_trated)
+    # print(df_TBOGI_trated)
     # 1) Garantir datetime (com hora) na coluna timestamp_received
     df_TBOGI_trated_histgeral['INICIO'] = pd.to_datetime(
         df_TBOGI_trated_histgeral['timestamp_received'])
@@ -527,7 +524,7 @@ def inserir_TBOGI_hist(df_TBOGI_trated):
 
 def inserir_wcm_hist(df_wcm_trated):
     df_wcm_trated_histgeral = df_wcm_trated.copy()
-    print(df_wcm_trated)
+    # print(df_wcm_trated)
     # 1) Garantir datetime (com hora) na coluna Data
     df_wcm_trated_histgeral['INICIO'] = pd.to_datetime(
         df_wcm_trated_histgeral['Data'])
@@ -553,7 +550,8 @@ def inserir_wcm_hist(df_wcm_trated):
 
 def inserir_trkv_hist(df_trkv_trated):
     df_trkv_trated_histgeral = df_trkv_trated.copy()
-    # print(df_trkv_trated)
+    print("df_trkv_trated = com erro")
+    print(df_trkv_trated)
     # 1) Garantir datetime (com hora) na coluna Data
     df_trkv_trated_histgeral['INICIO'] = pd.to_datetime(
         df_trkv_trated_histgeral['Data'])
@@ -640,16 +638,25 @@ if st.button("Executar função"):
 
         df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI = busca_dados(
             vg_entrada)
+        print("df_trkv")
+        print(df_trkv)
         try:
             df_trkv = tratar_outliers_trkv(df_trkv)
+            print("df_trkv_outliers")
+            print(df_trkv)
         except Exception as e:
             print(f"Erro ao tratar outliers df_trkv: {e}")
 
-        print(df_trkv.head())
+        # print(df_trkv.head())
         df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
             df_WCM, df_z369, df_trkv, df_busca_TBOGI)
+        print("df_trkv_trated")
+        print(df_trkv_trated)
+
 
 # ===== CSS Google Material =====
+
+
         def resumo_z1568():
             st.markdown("""
             <style>
@@ -877,7 +884,7 @@ if st.button("Executar função"):
 
             df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,
                                  df_trkv_timeline, df_TBOGI_timeline], ignore_index=True)
-            print(df_final)
+            # print(df_final)
 
             df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
                 lambda x: "" if x in ["WCM", "trkv", "TBOGI"] else x
@@ -1027,7 +1034,7 @@ if st.button("Executar função"):
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
     print("validation2")
-    print(df_trkv_trated)
+    # print(df_trkv_trated)
     try:
         import numpy as np
         import pandas as pd
@@ -1061,7 +1068,7 @@ if st.button("Executar função"):
             # ============================
             # 1) Preparar dados
             # ============================
-            df = df[df['STATUS_out'] == "OK"]
+            # df = df[df['STATUS_out'] == "OK"]
 
             x_all = pd.to_datetime(df[col_x], errors="coerce").map(
                 pd.Timestamp.toordinal).values
@@ -1299,17 +1306,18 @@ if st.button("Executar função"):
         col1, col2 = st.columns(2)
 
         with col1:
-            st.subheader("TRKV Cunha Máximo Passagem ()")
+            st.subheader("TRKV Cunha Máximo Passagem (mm)")
             fig_trkv.update_layout(
                 # legenda horizontal abaixo do gráfico
                 legend=dict(orientation="h", yanchor="bottom", y=-0.3)
             )
             st.plotly_chart(fig_trkv, width="stretch",
                             key="plot_trkv")
+            st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
             st.markdown(f"""
-            **R²:** `{r2:.4f}`  
-            **MAE:** `{mae:.4f}`  
-            **RMSE:** `{rmse:.4f}`  
+            **R²:** `{r2:.4f}`
+            **MAE:** `{mae:.4f}`
+            **RMSE:** `{rmse:.4f}`
             """)
             st.dataframe(df_trkv_trated.sort_values(
                 by="Data", ascending=False).reset_index(drop=True))
@@ -1322,9 +1330,9 @@ if st.button("Executar função"):
             )
             st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
             st.markdown(f"""
-            **Alarme Baixo:** `-`   
-            **Alarme Médio:** `-`   
-            **Alarme Alto:** `-`  
+            **Alarme Baixo:** `-`
+            **Alarme Médio:** `-`
+            **Alarme Alto:** `-`
             """)
             st.dataframe(df_wcm_trated.sort_values(
                 by="Data", ascending=False).reset_index(drop=True))
