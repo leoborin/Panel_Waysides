@@ -227,7 +227,7 @@ def busca_dados(vagao):
         print(data_mais_recente)
 
         vagao = int(vagao)
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI_PRD)
 
         # Definição do filtro
         filter = {'CarIDNumber': {'$ne': 0},
@@ -235,7 +235,7 @@ def busca_dados(vagao):
         # filter = { }
 
         # Consulta
-        cursor = client[DB_NAME]['TRKV_treated'].find(filter)
+        cursor = client[DB_NAME_PRD]['TRKV_treated'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
