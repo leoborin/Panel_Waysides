@@ -24,10 +24,10 @@ with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Configurações MongoDB
-MONGO_URI = st.secrets['database_dev']['MONGO_URI']
-DB_NAME = st.secrets['database_dev']['DB_NAME']
-MONGO_URI_PRD = st.secrets['database_prod']['MONGO_URI_PRD']
-DB_NAME_PRD = st.secrets['database_prod']['DB_NAME_PRD']
+MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+DB_NAME = "supervisorio"
+MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
