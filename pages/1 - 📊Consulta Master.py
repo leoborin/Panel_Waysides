@@ -39,7 +39,10 @@ with col_logo:
 with col_titulo:
     st.title("Consulta Completa Vagões v0 - Visão Micro")
 # st.write("POC Testes")
-
+st.write(MONGO_URI_PRD)
+st.write(DB_NAME_PRD)
+st.write(MONGO_URI)
+st.write(DB_NAME)
 # functions Begin --------------------------------------------------
 # main def
 
