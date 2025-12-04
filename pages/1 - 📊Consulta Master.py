@@ -24,10 +24,10 @@ with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Configurações MongoDB
-MONGO_URI = st.secrets['database_dev']['MONGO_URI']
-DB_NAME = st.secrets['database_dev']['DB_NAME']
-MONGO_URI_PRD = st.secrets['database_prod']['MONGO_URI_PRD']
-DB_NAME_PRD = st.secrets['database_prod']['DB_NAME_PRD']
+MONGO_URI = st.secrets.database_dev.MONGO_URI
+DB_NAME = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
@@ -39,10 +39,7 @@ with col_logo:
 with col_titulo:
     st.title("Consulta Completa Vagões v0 - Visão Micro")
 # st.write("POC Testes")
-st.write(MONGO_URI_PRD)
-st.write(DB_NAME_PRD)
-st.write(MONGO_URI)
-st.write(DB_NAME)
+
 # functions Begin --------------------------------------------------
 # main def
 
