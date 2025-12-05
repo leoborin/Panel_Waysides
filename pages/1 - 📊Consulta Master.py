@@ -38,17 +38,17 @@ cof_Outlier = 0.2
 from browser_detection import browser_detection_engine
 
 stats = browser_detection_engine()  # roda uma vez por padrão
-st.json(stats)
+#st.json(stats)
 
 # Exemplo de uso:
 is_mobile = stats.get("device", {}).get("is_mobile", False)
 is_desktop = stats.get("device", {}).get("is_desktop", False)
 
 if is_mobile:
-    st.set_page_config(layout="centered")
+    st.set_page_config(layout="wide")
     st.write("Usuário em mobile")
 if is_desktop:
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="centered")
     st.write("Usuário em desktop")
 
 
