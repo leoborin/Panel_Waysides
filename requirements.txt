@@ -4,4 +4,5 @@ pandas
 numpy
 matplotlib
 plotly
+streamlit-browser-engine==0.0.3
 
