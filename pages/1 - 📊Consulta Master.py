@@ -44,10 +44,10 @@ stats = browser_detection_engine()  # roda uma vez por padrão
 is_mobile = stats.get("device", {}).get("is_mobile", False)
 is_desktop = stats.get("device", {}).get("is_desktop", False)
 
-if is_mobile:
+if is_mobile == True:
     st.set_page_config(layout="wide")
     st.write("Usuário em mobile")
-if is_desktop:
+if is_desktop == True:
     st.set_page_config(layout="centered")
     st.write("Usuário em desktop")
 
