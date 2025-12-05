@@ -12,6 +12,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
+import json
 warnings.filterwarnings("ignore")
 
 
@@ -40,18 +41,11 @@ from browser_detection import browser_detection_engine
 stats = browser_detection_engine()  # roda uma vez por padrão
 #st.json(stats)
 
+#stats_tratado = json.loads(stats)
 # Exemplo de uso:
-is_mobile = stats.get("device", {}).get("is_mobile", False)
-is_desktop = stats.get("device", {}).get("is_desktop", False)
-
-if is_mobile == True:
-    st.set_page_config(layout="wide")
-    st.write("Usuário em mobile")
-elif is_desktop == True:
-    st.set_page_config(layout="centered")
-    st.write("Usuário em desktop")
-
-
+is_mobile = stats['isMobile']
+is_desktop = stats['isDesktop']
+print(stats['isDesktop'])
 
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
@@ -60,6 +54,12 @@ with col_logo:
     st.image("assets/vg666.png", width=100)
 with col_titulo:
     st.title("Consulta Completa Vagões v0 - Visão Micro")
+    if is_mobile == True:
+        st.set_page_config(layout="centered")
+        st.title("Usuário em mobile")
+    if is_desktop == True:
+        st.set_page_config(layout="wide")
+    
 # st.write("POC Testes")
 
 # functions Begin --------------------------------------------------
@@ -1691,3 +1691,4 @@ if st.button("Executar função"):
     st.markdown("### Liberações e Retenções")
     st.dataframe(df_z1568)
 # Tela -----------------------
+
