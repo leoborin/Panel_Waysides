@@ -59,9 +59,9 @@ def tratar_outliers_trkv(df):
         valor < min_3 * 0.70
     """
     df["key"] = df["CarIDNumber"].astype(int)
-    df["timestr"] = pd.to_datetime(
-        df["timestr"],  errors="coerce")
-    df = df.sort_values(["key", "timestr"])
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"],  errors="coerce")
+    df = df.sort_values(["key", "timestamp"])
 
     # Cálculo da força máxima entre os 8 sensores
     sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
@@ -263,7 +263,7 @@ def busca_dados(vagao):
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
-        print(df[['CarIDNumber', 'timestr']].head())
+        print(df[['CarIDNumber', 'timestamp']].head())
 
         # (Opcional) Remover a coluna _id, se não for necessária
         if '_id' in df.columns:
@@ -403,10 +403,10 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
 
     def tratar_trkv(df_trkv):
 
-        print(df_trkv[['CarIDNumber', 'timestr']].head())
+        print(df_trkv[['CarIDNumber', 'timestamp']].head())
 
         # Criar coluna Data
-        df_trkv['Data'] = df_trkv['timestr'].dt.date
+        df_trkv['Data'] = df_trkv['timestamp'].dt.date
 
         colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
                            "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
@@ -464,8 +464,8 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
 
     def tratar_z369(df_z369):
 
-        # df_z369['timestr'] = pd.to_datetime(df_z369['timestr'])
-        # df_z369['Data'] = df_z369['timestr'].dt.date
+        # df_z369['timestamp'] = pd.to_datetime(df_z369['timestamp'])
+        # df_z369['Data'] = df_z369['timestamp'].dt.date
 
         df_z369['Texto_Completo'] = (
             df_z369[['TEXTO', 'TEXTO AVARIA', 'TEXTO CAUSA']]
@@ -659,7 +659,6 @@ if st.button("Executar função"):
 
 
 # ===== CSS Google Material =====
-
 
         def resumo_z1568():
             st.markdown("""
@@ -1160,7 +1159,6 @@ if st.button("Executar função"):
 
 # -------------------------------------------------------------------Regressão
 
-
     def plot_Waysides():
         try:
             fig_trkv = go.Figure()
@@ -1582,8 +1580,10 @@ if st.button("Executar função"):
 # ------------------------
 
     st.markdown("## Dados df_164")
+    st.markdown("### Posicionamento mais recente e Carga - Translogic")
     st.dataframe(df_164)
     st.markdown("## Dados z369")
+    st.markdown("### Dados de Notas de Manutenção - SAP")
     colunas_z369 = [
         "NOTA",
         "ATIVO",
@@ -1610,6 +1610,7 @@ if st.button("Executar função"):
         by="dt_abertura_trated", ascending=False).reset_index(drop=True))
 
     st.markdown("## Dados WCM")
+    st.markdown("### Dados de medição de Impacto de Roda - WAYSIDE Wheel Impact")
 
     colunas_zWCM = [
         "json_header",
@@ -1625,9 +1626,10 @@ if st.button("Executar função"):
         by="Data", ascending=False).reset_index(drop=True))
 
     st.markdown("## Dados TRKV")
+    st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
 
     colunas_TRKV = [
-        "Header_TrainSequenceNumber_int",
+        "Header_TrainSequenceNumber",
         "CarOrientation",
         "CarIDInitial",
         "CarIDNumber",
@@ -1649,7 +1651,9 @@ if st.button("Executar função"):
         .reset_index(drop=True)
     )
     st.markdown("## Dados z851")
+    st.markdown("### Cadastro do vagão")
     st.dataframe(df_z851)
     st.markdown("## Dados z1568")
+    st.markdown("### Liberações e Retenções")
     st.dataframe(df_z1568)
 # Tela -----------------------

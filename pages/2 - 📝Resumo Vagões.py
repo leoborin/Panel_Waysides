@@ -94,7 +94,7 @@ def busca_dados(vagao):
         filter = {}
 
         # Consulta
-        cursor = client[DB_NAME_PRD]['z1568_Liberacoes_Retencoes_full'].find(
+        cursor = client[DB_NAME_PRD]['SAP_z1568_LiberacoesRetencoes'].find(
             filter)
 
         # Converter o cursor em lista e depois em DataFrame
@@ -116,7 +116,7 @@ def busca_dados(vagao):
         filter = {}
 
         # Consulta
-        cursor = client[DB_NAME_PRD]['CadastroVagoes_full'].find(filter)
+        cursor = client[DB_NAME_PRD]['SAP_z851_CadastroVagoes'].find(filter)
 
         # Converter o cursor em lista e depois em DataFrame
         df = pd.DataFrame(list(cursor))
@@ -263,7 +263,7 @@ def busca_dados(vagao):
         filter_query = {}
 
         # Consulta com limit = 1
-        cursor = client[DB_NAME_PRD]['tela164_full'].find(
+        cursor = client[DB_NAME_PRD]['Translogic_Tela_164_Foto'].find(
             filter_query, limit=1)
 
         # Converter cursor para DataFrame
@@ -409,6 +409,9 @@ def exibir_data_mais_recente():
 
 
 def concatenar_dados_trkv_z851(df_z851, df_trkv):
+    print("Iniciando tratamento TRKV...")
+    print(df_trkv.columns)
+    print(df_trkv)
 
     df_trkv["max_valor"] = df_trkv[["A#L_1", "A#L_2", "A#R_1",
                                     "A#R_2", "B#L_1", "B#L_2", "B#R_1", "B#R_2"]].max(axis=1)
@@ -416,12 +419,12 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
                       (df_trkv["max_valor"].notna())]
 
     df_trkv_filtred = df_trkv[["CarIDInitial",
-                               "CarIDNumber", "timestr", "max_valor"]]
+                               "CarIDNumber", "timestamp", "max_valor"]]
 
     df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["CarIDInitial"].notna()]
     df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["max_valor"].notna()]
-    df_trkv_filtred['timestr'] = pd.to_datetime(
-        df_trkv_filtred['timestr'], format="%d/%m/%Y %H:%M:%S", errors='coerce')
+    # df_trkv_filtred['timestamp'] = pd.to_datetime(
+    #     df_trkv_filtred['timestamp'], format="%d/%m/%Y %H:%M:%S", errors='coerce')
     df_trkv_filtred['key'] = df_trkv_filtred['CarIDNumber'].astype(int)
 
     df_z851['key'] = df_z851['EQUNR'].str.replace(
@@ -434,7 +437,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
 
     # 2. Ordena por equipamento e data (da mais recente para a mais antiga)
     df2_filtrado = df2_filtrado.sort_values(
-        ['key', 'timestr'], ascending=[True, True])
+        ['key', 'timestamp'], ascending=[True, True])
 
     # ============================================================
     # 1) TRATAMENTO INICIAL DO TRKV
@@ -451,7 +454,8 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
                       (df_trkv["max_valor"].notna())]
 
     # Filtrar colunas úteis
-    df_trkv = df_trkv[["CarIDInitial", "CarIDNumber", "timestr", "max_valor"]]
+    df_trkv = df_trkv[["CarIDInitial",
+                       "CarIDNumber", "timestamp", "max_valor"]]
 
     # Filtrar valores muito altos (ruído claro)
     df_trkv = df_trkv[df_trkv["max_valor"].astype(int) < 68]
@@ -459,10 +463,10 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
     # Criar chave do vagão
     df_trkv["key"] = df_trkv["CarIDNumber"].astype(int)
 
-    # Converter timestamp
-    df_trkv["timestr"] = pd.to_datetime(
-        df_trkv["timestr"], format="%d/%m/%Y %H:%M:%S", errors="coerce"
-    )
+    # # Converter timestamp
+    # df_trkv["timestamp"] = pd.to_datetime(
+    #     df_trkv["timestamp"], format="%d/%m/%Y %H:%M:%S", errors="coerce"
+    # )
 
     # ============================================================
     # 2) FUNÇÃO DE TRATAMENTO DE OUTLIERS
@@ -476,7 +480,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
             valor > max_3 * 1.30
             valor < min_3 * 0.70
         """
-        df = df.sort_values(["key", "timestr"])
+        df = df.sort_values(["key", "timestamp"])
 
         df["min_3"] = (
             df.groupby("key")["max_valor"]
@@ -508,22 +512,23 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
     # 3) CÁLCULO DAS MÉTRICAS (última medição + top 3)
     # ============================================================
 
-    df_trkv_valid = df_trkv.sort_values(["key", "timestr"])
+    df_trkv_valid = df_trkv.sort_values(["key", "timestamp"])
 
     # A) Última medição
     df_last = (
-        df_trkv_valid.sort_values(["key", "timestr"], ascending=[True, False])
+        df_trkv_valid.sort_values(
+            ["key", "timestamp"], ascending=[True, False])
         .groupby("key")
         .first()
         .reset_index()
         .rename(columns={
             "max_valor": "TRKV_ultima_medicao",
-            "timestr": "TRKV_last_timestamp"
+            "timestamp": "TRKV_last_timestamp"
         })
     )
 
     # B) Maior valor das 3 últimas passagens
-    df_trkv_valid["rank"] = df_trkv_valid.groupby("key")["timestr"] \
+    df_trkv_valid["rank"] = df_trkv_valid.groupby("key")["timestamp"] \
                                          .rank(method="first", ascending=False)
 
     df_top3 = df_trkv_valid[df_trkv_valid["rank"] <= 3]
@@ -710,79 +715,83 @@ def traduzir_STATUS(df):
     return df
 
 
-wcm_trated = tratar_WCM(df_WCM)
-df_new1 = concatenar_dados_trkv_z851(df_z851, df_trkv)
-df_new2 = concatenar_dados_new1_wcm_trated(df_new1, wcm_trated)
-df_new3 = concatenar_dados_new2_z369(df_new2, df_z369)
+try:
+    wcm_trated = tratar_WCM(df_WCM)
+    df_new1 = concatenar_dados_trkv_z851(df_z851, df_trkv)
+    df_new2 = concatenar_dados_new1_wcm_trated(df_new1, wcm_trated)
+    df_new3 = concatenar_dados_new2_z369(df_new2, df_z369)
 
-df_new3["SERIE"] = df_new3["VAGAO"].str[-3:]
-# df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
-df_base_concatenada = df_new3
-df_base_concatenada = traduzir_STATUS(df_base_concatenada)
+    df_new3["SERIE"] = df_new3["VAGAO"].str[-3:]
+    # df_new3 = concatenar_dados_new2_z369(df_new1, wcm_trated)
+    df_base_concatenada = df_new3
+    df_base_concatenada = traduzir_STATUS(df_base_concatenada)
 
-colunas_ordenadas = [
+    colunas_ordenadas = [
 
-    # 🔵 Identificação do vagão
-    "EQUNR",
-    "VAGAO",
-    "SERIE",
-    "STATUS_TRADUZIDO",
-    "MODELO",
-    "STATUS",
-    "DATA_DE_FABRICACAO_trated",
-    "DATA_GARANTIA_trated",
-    "ULTIMA_RG",
-    "KM_RODADO_DESDE_ULTIMA_RG",
+        # 🔵 Identificação do vagão
+        "EQUNR",
+        "VAGAO",
+        "SERIE",
+        "STATUS_TRADUZIDO",
+        "MODELO",
+        "STATUS",
+        "DATA_DE_FABRICACAO_trated",
+        "DATA_GARANTIA_trated",
+        "ULTIMA_RG",
+        "KM_RODADO_DESDE_ULTIMA_RG",
 
-    # =============================
-    # 🟠 Separador WCM
-    # =============================
-    "Separador_WCM",   # coluna vazia só para separar
-    "WCM_max_medicao_ultimas_3",
-    "WCM_ultima_medicao",
-    "WCM_last_timestamp",
+        # =============================
+        # 🟠 Separador WCM
+        # =============================
+        "Separador_WCM",   # coluna vazia só para separar
+        "WCM_max_medicao_ultimas_3",
+        "WCM_ultima_medicao",
+        "WCM_last_timestamp",
 
-    # =============================
-    # 🟣 Separador TRKV
-    # =============================
-    "Separador_TRKV",
-    "TRKV_max_medicao_ultimas_3",
-    "TRKV_ultima_medicao",
-    "TRKV_last_timestamp",
+        # =============================
+        # 🟣 Separador TRKV
+        # =============================
+        "Separador_TRKV",
+        "TRKV_max_medicao_ultimas_3",
+        "TRKV_ultima_medicao",
+        "TRKV_last_timestamp",
 
-    # =============================
-    # 🔴 Separador Status M1–M9
-    # =============================
-    "Separador_Status",
-    "M1 - Nota monitorada",
-    "M2 - Nota crítica",
-    "M3 - Nota de retenção",
-    "M4 - Nota da Engenharia",
-    "M6 - Vagão acidentado/descarrilado",
-    "M7 - Encerramento manutenção preventiva",
-    "M8 - Plano do PCM",
-    "M9 - Vandalismo",
-]
+        # =============================
+        # 🔴 Separador Status M1–M9
+        # =============================
+        "Separador_Status",
+        "M1 - Nota monitorada",
+        "M2 - Nota crítica",
+        "M3 - Nota de retenção",
+        "M4 - Nota da Engenharia",
+        "M6 - Vagão acidentado/descarrilado",
+        "M7 - Encerramento manutenção preventiva",
+        "M8 - Plano do PCM",
+        "M9 - Vandalismo",
+    ]
 
-df_base_concatenada["Separador_WCM"] = " | "
-df_base_concatenada["Separador_TRKV"] = " | "
-df_base_concatenada["Separador_Status"] = " | "
+    df_base_concatenada["Separador_WCM"] = " | "
+    df_base_concatenada["Separador_TRKV"] = " | "
+    df_base_concatenada["Separador_Status"] = " | "
 
-df_base_concatenada = df_base_concatenada[colunas_ordenadas]
+    df_base_concatenada = df_base_concatenada[colunas_ordenadas]
 
+    # =====================================================
+    # TELA PRINCIPAL
+    # =====================================================
 
-# =====================================================
-# TELA PRINCIPAL
-# =====================================================
+    st.title("📝Resumo Vagões")
+    st.write("---")
+    exibir_data_mais_recente()
+    st.write("---")
+except Exception as e:
+    st.error(f"Erro ao processar dados: {e}")
 
-st.title("📝Resumo Vagões")
-st.write("---")
-exibir_data_mais_recente()
-st.write("---")
 
 if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
     with st.spinner("Atualizado bases ... Aguarde..."):
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164 = busca_dados(0)
+        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164 = busca_dados(
+            0)
         print(df_WCM.shape, df_z369.shape, df_trkv.shape,
               df_z851.shape, df_z1568.shape, df_164.shape)
         print("Iniciando salvamento...")
@@ -802,97 +811,100 @@ if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
     st.success("Arquivos salvos com sucesso! ✅")
     st.rerun()
 
-# =============================
-# Filtro – EQUNR
-# =============================
 
-# Criar colunas
-col1, col2, col3, col4 = st.columns(4)
+try:
+    # =============================
+    # Filtro – EQUNR
+    # =============================
 
-# Lista de opções
-lista_equnr = sorted(df_base_concatenada["EQUNR"].unique())
-lista_serie = sorted(df_base_concatenada["SERIE"].unique())
-lista_modelo = sorted(df_base_concatenada["MODELO"].unique())
-lista_status = sorted(df_base_concatenada["STATUS"].unique())
+    # Criar colunas
+    col1, col2, col3, col4 = st.columns(4)
 
-# Capturar seleções (sem aplicar ainda)
-with col1:
-    filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=[
-                                "Todos"] + lista_equnr, index=0)
+    # Lista de opções
+    lista_equnr = sorted(df_base_concatenada["EQUNR"].unique())
+    lista_serie = sorted(df_base_concatenada["SERIE"].unique())
+    lista_modelo = sorted(df_base_concatenada["MODELO"].unique())
+    lista_status = sorted(df_base_concatenada["STATUS"].unique())
 
-with col2:
-    filtro_serie = st.multiselect(
-        "Filtrar por Série:", options=lista_serie, placeholder='Escolha a Série')
+    # Capturar seleções (sem aplicar ainda)
+    with col1:
+        filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=[
+                                    "Todos"] + lista_equnr, index=0)
 
-with col3:
-    filtro_modelo = st.multiselect(
-        "Filtrar por Modelo:", options=lista_modelo, placeholder='Escolha o Modelo')
+    with col2:
+        filtro_serie = st.multiselect(
+            "Filtrar por Série:", options=lista_serie, placeholder='Escolha a Série')
 
-with col4:
-    filtro_status = st.multiselect(
-        "Filtrar por Status:", options=lista_status, placeholder='Escolha o Status')
+    with col3:
+        filtro_modelo = st.multiselect(
+            "Filtrar por Modelo:", options=lista_modelo, placeholder='Escolha o Modelo')
 
-# ✅ Aplicar todos os filtros simultaneamente
-df_filtrado = df_base_concatenada.copy()
+    with col4:
+        filtro_status = st.multiselect(
+            "Filtrar por Status:", options=lista_status, placeholder='Escolha o Status')
 
-if filtro_equnr != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["EQUNR"] == filtro_equnr]
+    # ✅ Aplicar todos os filtros simultaneamente
+    df_filtrado = df_base_concatenada.copy()
 
-if filtro_serie:
-    df_filtrado = df_filtrado[df_filtrado["SERIE"].isin(filtro_serie)]
+    if filtro_equnr != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["EQUNR"] == filtro_equnr]
 
-if filtro_modelo:
-    df_filtrado = df_filtrado[df_filtrado["MODELO"].isin(filtro_modelo)]
+    if filtro_serie:
+        df_filtrado = df_filtrado[df_filtrado["SERIE"].isin(filtro_serie)]
 
-if filtro_status:  # Se houver seleção
-    df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(filtro_status)]
+    if filtro_modelo:
+        df_filtrado = df_filtrado[df_filtrado["MODELO"].isin(filtro_modelo)]
 
-col_WCM, col_TRKV = st.columns(2)
+    if filtro_status:  # Se houver seleção
+        df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(filtro_status)]
 
-with col_WCM:
-    values = st.slider("Selecione um range para os valores de WCM",
-                       0, 500, (0, 500), key='slider_WCM')
-    df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0])
-                              & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
+    col_WCM, col_TRKV = st.columns(2)
 
-with col_TRKV:
-    values1 = st.slider("Selecione um range para os valores de TRKV",
-                        0, 200, (0, 200), key='slider_TRKV')
-    df_filtrado = df_filtrado[(df_filtrado["TRKV_max_medicao_ultimas_3"] >= values1[0])
-                              & (df_filtrado["TRKV_max_medicao_ultimas_3"] <= values1[1])]
-# ===========================================
+    with col_WCM:
+        values = st.slider("Selecione um range para os valores de WCM",
+                           0, 500, (0, 500), key='slider_WCM')
+        df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0])
+                                  & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
 
+    with col_TRKV:
+        values1 = st.slider("Selecione um range para os valores de TRKV",
+                            0, 200, (0, 200), key='slider_TRKV')
+        df_filtrado = df_filtrado[(df_filtrado["TRKV_max_medicao_ultimas_3"] >= values1[0])
+                                  & (df_filtrado["TRKV_max_medicao_ultimas_3"] <= values1[1])]
+    # ===========================================
 
-def create_EQUNR_link(equnr):
-    """Cria link com o valor da EQUNR"""
-    return f"/Consulta_Master?eqnr={equnr}"
+    def create_EQUNR_link(equnr):
+        """Cria link com o valor da EQUNR"""
+        return f"/Consulta_Master?eqnr={equnr}"
 
+    # Cria DataFrame com link
+    df_filtrado_com_link = df_filtrado.copy()
+    df_filtrado_com_link['EQUNR_Link'] = df_filtrado_com_link['EQUNR'].apply(
+        create_EQUNR_link)
 
-# Cria DataFrame com link
-df_filtrado_com_link = df_filtrado.copy()
-df_filtrado_com_link['EQUNR_Link'] = df_filtrado_com_link['EQUNR'].apply(
-    create_EQUNR_link)
+    # Reordena: link primeiro, esconde EQUNR original
+    colunas = ['EQUNR_Link'] + [col for col in df_filtrado_com_link.columns if col !=
+                                'EQUNR' and col != 'EQUNR_Link']
+    df_display = df_filtrado_com_link[colunas]
 
-# Reordena: link primeiro, esconde EQUNR original
-colunas = ['EQUNR_Link'] + [col for col in df_filtrado_com_link.columns if col !=
-                            'EQUNR' and col != 'EQUNR_Link']
-df_display = df_filtrado_com_link[colunas]
+    st.markdown("### Dados Concatenados e Tratados")
+    st.dataframe(
+        df_display,
+        width='stretch',
+        hide_index=True,
+        height=600,
+        column_config={
+            "EQUNR_Link": st.column_config.LinkColumn(
+                "Abrir Resumo",
+                help="Clique para abrir detalhes do vagão",
+                display_text="📝 Resumo Vagão"
+            ),
+            # Esconde se ainda aparecer
+            "EQUNR": st.column_config.Column(width="none")
+        }
+    )
 
-st.markdown("### Dados Concatenados e Tratados")
-st.dataframe(
-    df_display,
-    width='stretch',
-    hide_index=True,
-    height=600,
-    column_config={
-        "EQUNR_Link": st.column_config.LinkColumn(
-            "Abrir Resumo",
-            help="Clique para abrir detalhes do vagão",
-            display_text="📝 Resumo Vagão"
-        ),
-        # Esconde se ainda aparecer
-        "EQUNR": st.column_config.Column(width="none")
-    }
-)
-
-st.write(f"Total de registros: **{df_filtrado.shape[0]}**")
+    st.write(f"Total de registros: **{df_filtrado.shape[0]}**")
+except Exception as e:
+    st.error(f"Erro ao processar os dados: {e}")
+    st.write(f"Atualize os dados.")
