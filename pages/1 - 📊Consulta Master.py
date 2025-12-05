@@ -35,31 +35,24 @@ DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 cof_Outlier = 0.2
 
 
+from browser_detection import browser_detection_engine
 
-from streamlit_javascript import st_javascript
-from user_agents import parse
+stats = browser_detection_engine()  # roda uma vez por padrão
+st.json(stats)
 
-ua_string = st_javascript("window.navigator.userAgent;")
-width = st_javascript("window.innerWidth;")
+# Exemplo de uso:
+is_mobile = stats.get("device", {}).get("is_mobile", False)
+is_desktop = stats.get("device", {}).get("is_desktop", False)
 
-is_mobile = False
-if ua_string:
-    ua = parse(ua_string)
-    is_mobile = ua.is_mobile or ua.is_tablet
-elif width:
-    is_mobile = width < 768  # fallback por breakpoint
-
-st.write({"is_mobile": is_mobile, "width": width})
 if is_mobile:
     st.set_page_config(layout="centered")
-    # render versão mobile
-else:
+    st.write("Usuário em mobile")
+if is_desktop:
     st.set_page_config(layout="wide")
-    # render versão desktop
+    st.write("Usuário em desktop")
 
-ua_string = st_javascript("window.navigator.userAgent;")  # retorna a UA
 
-st.set_page_config(layout="wide")
+
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 col_logo, col_titulo = st.columns([1, 7])
