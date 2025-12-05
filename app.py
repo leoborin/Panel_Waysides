@@ -5,21 +5,8 @@ MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.
 DB_NAME = "supervisorio"
 with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-from browser_detection import browser_detection_engine
 
-stats = browser_detection_engine()  # roda uma vez por padrão
-#st.json(stats)
-
-#stats_tratado = json.loads(stats)
-# Exemplo de uso:
-is_mobile = stats['isMobile']
-is_desktop = stats['isDesktop']
-if is_mobile == True:
-    st.set_page_config(layout="centered")
-    st.title("Usuário em mobile")
-if is_desktop == True:
-    st.set_page_config(layout="wide")
-#st.set_page_config(layout="wide")
+st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 # Mensagem de boas-vindas

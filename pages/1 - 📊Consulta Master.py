@@ -35,18 +35,6 @@ DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 # DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
-
-from browser_detection import browser_detection_engine
-
-stats = browser_detection_engine()  # roda uma vez por padrão
-#st.json(stats)
-
-#stats_tratado = json.loads(stats)
-# Exemplo de uso:
-is_mobile = stats['isMobile']
-is_desktop = stats['isDesktop']
-print(stats['isDesktop'])
-
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
 col_logo, col_titulo = st.columns([1, 7])
