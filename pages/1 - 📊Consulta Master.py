@@ -34,6 +34,31 @@ DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 # DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
+
+
+from streamlit_javascript import st_javascript
+from user_agents import parse
+
+ua_string = st_javascript("window.navigator.userAgent;")
+width = st_javascript("window.innerWidth;")
+
+is_mobile = False
+if ua_string:
+    ua = parse(ua_string)
+    is_mobile = ua.is_mobile or ua.is_tablet
+elif width:
+    is_mobile = width < 768  # fallback por breakpoint
+
+st.write({"is_mobile": is_mobile, "width": width})
+if is_mobile:
+    st.set_page_config(layout="centered")
+    # render versão mobile
+else:
+    st.set_page_config(layout="wide")
+    # render versão desktop
+
+ua_string = st_javascript("window.navigator.userAgent;")  # retorna a UA
+
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
