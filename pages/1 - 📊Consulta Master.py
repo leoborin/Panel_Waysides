@@ -1309,6 +1309,22 @@ if st.button("Executar função"):
 
         with col1:
             st.subheader("TRKV Cunha Máximo Passagem (mm)")
+            MAP_WEDGE = {
+                2: "Ride Control",
+                3: "Barber",
+                4: "Ride Master",
+                5: "Motion Control",
+            }
+
+            code = df_trkv["WedgeTypeCode"].iloc[0]
+
+            # trata NaN e 0 como inválido
+            if pd.isna(code) or code == 0:
+                label = "inválido"
+            else:
+                label = MAP_WEDGE.get(int(code), "inválido")  # int() se o dtype vier float
+ 
+            st.markdown(f'Tipo de Truque:  {label}')
             fig_trkv.update_layout(
                 # legenda horizontal abaixo do gráfico
                 legend=dict(orientation="h", yanchor="bottom", y=-0.3)
