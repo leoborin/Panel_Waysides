@@ -37,7 +37,7 @@ cof_Outlier = 0.2
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
 st.logo(logo, size='large')
-col_logo, col_titulo = st.columns([1, 3])
+col_logo, col_titulo = st.columns([1, 7])
 with col_logo:
     st.image("assets/vg666.png", width=100)
 with col_titulo:
@@ -1324,7 +1324,7 @@ if st.button("Executar função"):
             else:
                 label = MAP_WEDGE.get(int(code), "inválido")  # int() se o dtype vier float
  
-            st.markdown(f'Tipo de Truque:  {label}')
+            st.markdown(f'Tipo de Truque:  **{label}**')
             fig_trkv.update_layout(
                 # legenda horizontal abaixo do gráfico
                 legend=dict(orientation="h", yanchor="bottom", y=-0.3)
