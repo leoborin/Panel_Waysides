@@ -23,11 +23,15 @@ eqnr = st.query_params.get("eqnr")
 with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
-MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
-DB_NAME_PRD = "inteligencia_MR"
+#Configurações MongoDB
+MONGO_URI = st.secrets.database_dev.MONGO_URI
+DB_NAME = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+# MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+# DB_NAME = "supervisorio"
+# MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+# DB_NAME_PRD = "inteligencia_MR"
 cof_Outlier = 0.2
 
 st.set_page_config(layout="wide")
@@ -369,7 +373,7 @@ def busca_dados(vagao):
 
     print("df_WCM:", len(df_WCM))
     print("df_z369:", len(df_z369))
-    print("df_trkv:", len(df_trkv))
+    #print("df_trkv:", len(df_trkv))
     print("df_z851:", len(df_z851))
     print("df_z1568:", len(df_z1568))
     print("df_164:", len(df_164))
@@ -1313,7 +1317,7 @@ if st.button("Executar função"):
             )
             st.plotly_chart(fig_trkv, width="stretch",
                             key="plot_trkv")
-            st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
+            #st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
             st.markdown(f"""
             **R²:** `{r2:.4f}`
             **MAE:** `{mae:.4f}`
