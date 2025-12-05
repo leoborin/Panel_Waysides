@@ -47,7 +47,7 @@ is_desktop = stats.get("device", {}).get("is_desktop", False)
 if is_mobile == True:
     st.set_page_config(layout="wide")
     st.write("Usuário em mobile")
-if is_desktop == True:
+elif is_desktop == True:
     st.set_page_config(layout="centered")
     st.write("Usuário em desktop")
 
