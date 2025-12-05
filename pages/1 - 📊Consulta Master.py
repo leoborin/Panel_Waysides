@@ -54,12 +54,8 @@ with col_logo:
     st.image("assets/vg666.png", width=100)
 with col_titulo:
     st.title("Consulta Completa Vagões v0 - Visão Micro")
-    if is_mobile == True:
-        st.set_page_config(layout="centered")
-        st.title("Usuário em mobile")
-    if is_desktop == True:
-        st.set_page_config(layout="wide")
-    
+
+st.set_page_config(layout="wide")
 # st.write("POC Testes")
 
 # functions Begin --------------------------------------------------
