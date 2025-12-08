@@ -718,6 +718,11 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
         'data_ultima_medicao': 'WCM_last_timestamp'
     })
 
+    # df_tratado['WCM_ultima_medicao'] = df_tratado['WCM_ultima_medicao'].fillna(0)
+    # df_tratado['WCM_max_medicao_ultimas_3'] = df_tratado['WCM_max_medicao_ultimas_3'].fillna(0)
+    # df_tratado['TRKV_ultima_medicao'] = df_tratado['TRKV_ultima_medicao'].fillna(0)
+    # df_tratado['TRKV_max_medicao_ultimas_3'] = df_tratado['TRKV_max_medicao_ultimas_3'].fillna(0)
+    
     return df_tratado
 
 
@@ -759,7 +764,7 @@ def concatenar_dados_new2_z369(df_new2, df_z369):
     # Merge final
     df_final = df_new2.merge(contagem_pivot,
                              on='key', how='left')
-
+    df_final = df_final.fillna(0)
     return df_final
 
 
@@ -775,9 +780,8 @@ def traduzir_STATUS(df):
         return df
 
     # Aplicar tradução segura
-    df["STATUS_TRADUZIDO"] = df["STATUS"].map(
+    df["STATUS"] = df["STATUS"].map(
         mapa_status).fillna("Indisponível")
-
     return df
 
 
@@ -798,7 +802,6 @@ try:
         "EQUNR",
         "VAGAO",
         "SERIE",
-        "STATUS_TRADUZIDO",
         "MODELO",
         "STATUS",
         "DATA_DE_FABRICACAO_trated",

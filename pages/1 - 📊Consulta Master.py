@@ -1222,6 +1222,32 @@ if st.button("Executar função"):
                 name="Projeção Futura (+30 dias)"
             ))
 
+            # -------------------------
+            # 4. Alarme MAX
+            # -------------------------
+            MAP_WEDGE = {
+                2: 45,
+                3: 57,
+                4: 64,
+                5: 57,
+            }
+
+            code = df_trkv["WedgeTypeCode"].iloc[0]
+
+            # trata NaN e 0 como inválido
+            if pd.isna(code) or code == 0:
+                label = "inválido"
+            else:
+                label = MAP_WEDGE.get(int(code), "inválido")
+
+            df_trkv_trated['Alarme'] = label
+            fig_trkv.add_trace(go.Scatter(
+                x=df_trkv_trated["Data"],
+                y=df_trkv_trated['Alarme'],
+                mode="lines",
+                line=dict(color="red", width=2, dash="dash"),
+                name=f"Alarme em {label}"
+            ))
             # Layout
             fig_trkv.update_layout(
                 title="TRKV - Regressão + Projeção Futura",
