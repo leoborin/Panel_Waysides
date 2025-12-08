@@ -64,6 +64,7 @@ df_WCM = dfs["df_WCM"]
 df_z369 = dfs["df_z369"]
 df_z851 = dfs["df_z851"]
 df_z1568 = dfs["df_z1568"]
+df_tbogi = dfs["df_tbogi"]
 
 # =============================
 # funções Gerais
@@ -88,6 +89,59 @@ def salvar_tudo_threadpool(dfs, paths):
 
 
 def busca_dados(vagao):
+
+    def busca_TBOGI(vagao):
+        try:
+            vagao = int(vagao)
+            client = MongoClient(MONGO_URI)
+
+            # -------------------------
+            # 1) Filtro por car_num
+            # -------------------------
+            filter = {}
+
+            cursor = client[DB_NAME]["tbogi_treated"].find(filter)
+
+            # -------------------------
+            # 2) Cursor → DataFrame
+            # -------------------------
+            df = pd.DataFrame(list(cursor))
+
+            if df.empty:
+                print(f"TBOGI: Nenhum registro encontrado para {vagao}")
+                return pd.DataFrame()
+
+            # -------------------------
+            # 3) Criar coluna valor_mod_pd
+            # -------------------------
+            if "tp" in df.columns:
+                df["valor_mod_pd"] = df["tp"].abs()
+            else:
+                print("TBOGI: coluna 'tp' não encontrada")
+                df["valor_mod_pd"] = np.nan
+
+            # -------------------------
+            # 4) Remover _id
+            # -------------------------
+            df.drop(columns=["_id"], errors="ignore", inplace=True)
+
+            # -------------------------
+            # 5) Maior valor por passagem E por car_num
+            # -------------------------
+            df_resumo = (
+                df.groupby(["timestamp_received", "car_num"], as_index=False)
+                .agg(max_valor_mod_pd=("valor_mod_pd", "max"))
+                .sort_values(["timestamp_received"])
+            )
+            print(
+                f"TBOGI: Consultado com sucesso para {vagao}, registros: {len(df_resumo)}")
+            print(df_resumo.head())
+
+            return df_resumo
+
+        except Exception as e:
+            print(f"Erro ao consultar TBOGI: {e}")
+            return pd.DataFrame()
 
     def busca_z1568(vagao):
         # Conexão com o MongoDB
@@ -320,7 +374,8 @@ def busca_dados(vagao):
             busca_TRKV,
             busca_z851,
             busca_z1568,
-            busca_Tela164
+            busca_Tela164,
+            busca_TBOGI
         ]
 
         resultados = {}
@@ -349,6 +404,7 @@ def busca_dados(vagao):
     df_z851 = result["busca_z851"]
     df_z1568 = result["busca_z1568"]
     df_164 = result["busca_Tela164"]
+    df_tbogi = result["busca_TBOGI"]
     #
 
     print(len(df_WCM))
@@ -357,10 +413,11 @@ def busca_dados(vagao):
     print(len(df_z851))
     print(len(df_z1568))
     print(len(df_164))
+    print(len(df_tbogi))
 
     # st.success("Função executada com sucesso!")
 
-    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164
+    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_tbogi
 
 
 def exibir_data_mais_recente():
@@ -371,6 +428,7 @@ def exibir_data_mais_recente():
     dt_z369 = pd.to_datetime(df_z369['dt_last_udate_trated'], errors='coerce')
     dt_z851 = pd.to_datetime(df_z851['Atualizacao'], errors='coerce')
     dt_z1568 = pd.to_datetime(df_z1568['dt_fim_trated'], errors='coerce')
+    dt_tbogi = df_tbogi['timestamp_received']
 
     # Datas mais recentes
     data_mais_recente_164 = dt_164.max()
@@ -379,6 +437,7 @@ def exibir_data_mais_recente():
     data_mais_recente_z369 = dt_z369.max()
     data_mais_recente_z851 = dt_z851.max()
     data_mais_recente_z1568 = dt_z1568.max()
+    data_mais_recente_tbogi = dt_tbogi.max()
 
     print("164:", data_mais_recente_164)
     print("TRKV:", data_mais_recente_trkv)
@@ -387,7 +446,7 @@ def exibir_data_mais_recente():
     print("Z851:", data_mais_recente_z851)
     print("Z1568:", data_mais_recente_z1568)
     st.markdown("### Datas Mais Recentes nas Bases")
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
     with col1:
         st.metric("164", str(data_mais_recente_164.date()))
@@ -406,6 +465,8 @@ def exibir_data_mais_recente():
 
     with col6:
         st.metric("Z1568", str(data_mais_recente_z1568.date()))
+    with col7:
+        st.metric("TBOGI", str(data_mais_recente_tbogi.date()))
 
 
 # =============================
@@ -795,12 +856,12 @@ except Exception as e:
 
 if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
     with st.spinner("Atualizado bases ... Aguarde..."):
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164 = busca_dados(
+        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_tbogi = busca_dados(
             0)
         print(df_WCM.shape, df_z369.shape, df_trkv.shape,
-              df_z851.shape, df_z1568.shape, df_164.shape)
+              df_z851.shape, df_z1568.shape, df_164.shape, df_tbogi.shape)
         print("Iniciando salvamento...")
-        dfs = [df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164]
+        dfs = [df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_tbogi]
 
         paths = [
             "./temp/df_WCM.parquet",
@@ -808,7 +869,8 @@ if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
             "./temp/df_trkv.parquet",
             "./temp/df_z851.parquet",
             "./temp/df_z1568.parquet",
-            "./temp/df_164.parquet"
+            "./temp/df_164.parquet",
+            "./temp/df_tbogi.parquet"
         ]
 
         salvar_tudo_threadpool(dfs, paths)

@@ -184,146 +184,166 @@ def busca_dados(vagao):
         return df
 
     def busca_wcm(vagao):
-        # Conexão com o MongoDB
-        client = MongoClient(
-            MONGO_URI_PRD)
-        vagao_str = str(vagao)
-        # Pipeline de agregação
-        pipeline = [
-            {
-                "$match": {
-                    "json_documents.json_Identificação do veículo": {
-                        "$regex": vagao_str,
-                        "$options": "i"   # ignorar maiúsc/minúsc (opcional)
+        try:
+            # Conexão com o MongoDB
+            client = MongoClient(
+                MONGO_URI_PRD)
+            vagao_str = str(vagao)
+            # Pipeline de agregação
+            pipeline = [
+                {
+                    "$match": {
+                        "json_documents.json_Identificação do veículo": {
+                            "$regex": vagao_str,
+                            # ignorar maiúsc/minúsc (opcional)
+                            "$options": "i"
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "json_documents": 1,
+                        "_id": 0
+                    }
+                },
+                {
+                    "$unwind": "$json_documents"
+                },
+                {
+                    "$match": {
+                        "json_documents.json_Identificação do veículo": {
+                            "$regex": vagao_str,
+                            # ignorar maiúsc/minúsc (opcional)
+                            "$options": "i"
+                        }
                     }
                 }
-            },
-            {
-                "$project": {
-                    "json_documents": 1,
-                    "_id": 0
-                }
-            },
-            {
-                "$unwind": "$json_documents"
-            },
-            {
-                "$match": {
-                    "json_documents.json_Identificação do veículo": {
-                        "$regex": vagao_str,
-                        "$options": "i"   # ignorar maiúsc/minúsc (opcional)
-                    }
-                }
-            }
-        ]
+            ]
 
-        # Executa a agregação
-        result = client[DB_NAME_PRD]['WCM'].aggregate(pipeline)
+            # Executa a agregação
+            result = client[DB_NAME_PRD]['WCM'].aggregate(pipeline)
 
-        # Converte o resultado em DataFrame
-        df = pd.DataFrame(list(result))
+            # Converte o resultado em DataFrame
+            df = pd.DataFrame(list(result))
 
-        # Se quiser expandir o dicionário 'json_documents' em colunas separadas:
-        if not df.empty and 'json_documents' in df.columns:
-            df = pd.json_normalize(df['json_documents'])
+            # Se quiser expandir o dicionário 'json_documents' em colunas separadas:
+            if not df.empty and 'json_documents' in df.columns:
+                df = pd.json_normalize(df['json_documents'])
+        except Exception as e:
+            print(f"Erro ao consultar WCM: {e}")
+            df = pd.DataFrame()
 
         return df
 
     def busca_z369(vagao):
-        # Conexão com o MongoDB
-        client = MongoClient(
-            MONGO_URI_PRD)
+        try:
+            # Conexão com o MongoDB
+            client = MongoClient(
+                MONGO_URI_PRD)
 
-        vagao_str = str(vagao)
+            vagao_str = str(vagao)
 
-        # Definição do filtro
-        filter = {"ATIVO": {"$regex": vagao_str}}
+            # Definição do filtro
+            filter = {"ATIVO": {"$regex": vagao_str}}
 
-        # Consulta
-        cursor = client[DB_NAME_PRD]['SAP_z369_notas'].find(filter)
+            # Consulta
+            cursor = client[DB_NAME_PRD]['SAP_z369_notas'].find(filter)
 
-        # Converter o cursor em lista e depois em DataFrame
-        df = pd.DataFrame(list(cursor))
+            # Converter o cursor em lista e depois em DataFrame
+            df = pd.DataFrame(list(cursor))
 
-        # (Opcional) Remover a coluna _id, se não for necessária
-        if '_id' in df.columns:
-            df.drop('_id', axis=1, inplace=True)
+            # (Opcional) Remover a coluna _id, se não for necessária
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
 
-        return df
+            return df
+        except Exception as e:
+            print(f"Erro ao consultar z369: {e}")
+            return pd.DataFrame()
 
     def busca_TRKV(vagao):
-        # Conexão com o MongoDB
-        vagao = int(vagao)
-        client = MongoClient(
-            MONGO_URI_PRD)
+        try:
+            # Conexão com o MongoDB
+            vagao = int(vagao)
+            client = MongoClient(
+                MONGO_URI_PRD)
 
-        # Definição do filtro
-        filter = {'CarIDNumber': vagao}
+            # Definição do filtro
+            filter = {'CarIDNumber': vagao}
 
-        # Consulta
-        cursor = client[DB_NAME_PRD]['TRKV_treated'].find(filter)
+            # Consulta
+            cursor = client[DB_NAME_PRD]['TRKV_treated'].find(filter)
 
-        # Converter o cursor em lista e depois em DataFrame
-        df = pd.DataFrame(list(cursor))
-        print(df[['CarIDNumber', 'timestamp']].head())
+            # Converter o cursor em lista e depois em DataFrame
+            df = pd.DataFrame(list(cursor))
+            print(df[['CarIDNumber', 'timestamp']].head())
 
-        # (Opcional) Remover a coluna _id, se não for necessária
-        if '_id' in df.columns:
-            df.drop('_id', axis=1, inplace=True)
+            # (Opcional) Remover a coluna _id, se não for necessária
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
 
-        return df
+            return df
+        except Exception as e:
+            print(f"Erro ao consultar TRKV: {e}")
+            return pd.DataFrame()
 
     def busca_Tela164(vagao):
-        from pymongo import MongoClient
-        import pandas as pd
+        try:
 
-        # Garantir que o vagao é string (Mongo armazena como string)
-        vagao = str(vagao)
+            # Garantir que o vagao é string (Mongo armazena como string)
+            vagao = str(vagao)
 
-        # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI_PRD)
+            # Conexão com o MongoDB
+            client = MongoClient(MONGO_URI_PRD)
 
-        # Filtro usando o parâmetro recebido
-        filter_query = {'VAGAO': re.compile(f"{vagao}")}
+            # Filtro usando o parâmetro recebido
+            filter_query = {'VAGAO': re.compile(f"{vagao}")}
 
-        # Consulta com limit = 1
-        cursor = client[DB_NAME_PRD]['Translogic_Tela_164_Foto'].find(
-            filter_query, limit=1)
+            # Consulta com limit = 1
+            cursor = client[DB_NAME_PRD]['Translogic_Tela_164_Foto'].find(
+                filter_query, limit=1)
 
-        # Converter cursor para DataFrame
-        df = pd.DataFrame(list(cursor))
+            # Converter cursor para DataFrame
+            df = pd.DataFrame(list(cursor))
 
-        # Remover coluna _id se existir
-        if '_id' in df.columns:
-            df.drop('_id', axis=1, inplace=True)
+            # Remover coluna _id se existir
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
 
-        return df
+            return df
+        except Exception as e:
+            print(f"Erro ao consultar Tela164: {e}")
+            return pd.DataFrame()
 
     def busca_SAT_TAREFAS_full(vagao):
-        from pymongo import MongoClient
-        import pandas as pd
+        try:
+            from pymongo import MongoClient
+            import pandas as pd
 
-        # Garantir que o vagao é string (Mongo armazena como string)
-        vagao = str(vagao)
+            # Garantir que o vagao é string (Mongo armazena como string)
+            vagao = str(vagao)
 
-        # Conexão com o MongoDB
-        client = MongoClient(MONGO_URI_PRD)
+            # Conexão com o MongoDB
+            client = MongoClient(MONGO_URI_PRD)
 
-        # Filtro usando o parâmetro recebido
-        filter_query = {'EQUNR': re.compile(f"{vagao}")}
+            # Filtro usando o parâmetro recebido
+            filter_query = {'EQUNR': re.compile(f"{vagao}")}
 
-        # Consulta com limit = 1
-        cursor = client[DB_NAME_PRD]['SAT_TAREFAS_full'].find(
-            filter_query)
+            # Consulta com limit = 1
+            cursor = client[DB_NAME_PRD]['SAT_TAREFAS_full'].find(
+                filter_query)
 
-        # Converter cursor para DataFrame
-        df = pd.DataFrame(list(cursor))
+            # Converter cursor para DataFrame
+            df = pd.DataFrame(list(cursor))
 
-        # Remover coluna _id se existir
-        if '_id' in df.columns:
-            df.drop('_id', axis=1, inplace=True)
+            # Remover coluna _id se existir
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
 
-        return df
+            return df
+        except Exception as e:
+            print(f"Erro ao consultar SAT_TAREFAS_full: {e}")
+            return pd.DataFrame()
 
     def medir_tempo(func, *args, **kwargs):
         inicio = time.time()
@@ -646,6 +666,7 @@ if st.button("Executar função"):
             vg_entrada)
         print("df_trkv")
         print(df_trkv)
+
         try:
             df_trkv = tratar_outliers_trkv(df_trkv)
             print("df_trkv_outliers")
@@ -1376,9 +1397,12 @@ if st.button("Executar função"):
 
             # Plota gráfico de linha
 # graficos WCM e TRKV
-    plot_Waysides()
+    try:
+        plot_Waysides()
+    except Exception as e:
+        print(f"Erro ao plotar gráficos Waysides: {e}")
 
-
+    st.write("---")
 # ------------------------
     if not df_SAT_TAREFAS_full.empty:
         df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
@@ -1400,8 +1424,23 @@ if st.button("Executar função"):
         # Converter Timestamp para string
         for row in dados:
             for k, v in row.items():
+
+                # Tratamento para Timestamps
                 if isinstance(v, pd.Timestamp):
-                    row[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+                    row[k] = "" if pd.isna(v) else v.strftime(
+                        "%Y-%m-%d %H:%M:%S")
+
+                # NaT explícito
+                elif v is pd.NaT:
+                    row[k] = ""
+
+                # NaN numérico (float("nan"))
+                elif isinstance(v, float) and np.isnan(v):
+                    row[k] = ""
+
+                # None
+                elif v is None:
+                    row[k] = ""
 
         html_code = f"""
         <html>
@@ -1593,86 +1632,117 @@ if st.button("Executar função"):
         """
 
         components.html(html_code, height=900, scrolling=True)
-
-    plotar_TELA_SAT(df_SAT_TAREFAS_full)
+    try:
+        plotar_TELA_SAT(df_SAT_TAREFAS_full)
+    except Exception as e:
+        print(f"Erro ao exibir TELA SAT: {e}")
+    st.write("---")
 # ------------------------
+    try:  # 164
+        st.markdown("## Dados df_164")
+        st.markdown("### Posicionamento mais recente e Carga - Translogic")
+        st.dataframe(df_164)
+    except Exception as e:
+        print(f"Erro ao exibir dados df_164: {e}")
 
-    st.markdown("## Dados df_164")
-    st.markdown("### Posicionamento mais recente e Carga - Translogic")
-    st.dataframe(df_164)
-    st.markdown("## Dados z369")
-    st.markdown("### Dados de Notas de Manutenção - SAP")
-    colunas_z369 = [
-        "NOTA",
-        "ATIVO",
-        "MODELO",
-        "dt_abertura_trated",
-        "dt_fechamento_trated",
-        "STATUS",
-        "TP NOTA",
-        "TEXTO",
-        "TEXTO AVARIA",
-        "TEXTO CAUSA",
-        "Flag"
-    ]
-    df_z369['dt_abertura_trated'] = (
-        pd.to_datetime(df_z369['dt_abertura_trated'])
-        .dt.strftime("%d/%m/%Y")
-    )
+    st.write("---")
+    try:  # z369
+        st.markdown("## Dados z369")
+        st.markdown("### Dados de Notas de Manutenção - SAP")
+        colunas_z369 = [
+            "NOTA",
+            "ATIVO",
+            "MODELO",
+            "dt_abertura_trated",
+            "dt_fechamento_trated",
+            "STATUS",
+            "TP NOTA",
+            "TEXTO",
+            "TEXTO AVARIA",
+            "TEXTO CAUSA",
+            "Flag"
+        ]
+        df_z369['dt_abertura_trated'] = (
+            pd.to_datetime(df_z369['dt_abertura_trated'])
+            .dt.strftime("%d/%m/%Y")
+        )
 
-    df_z369['dt_fechamento_trated'] = (
-        pd.to_datetime(df_z369['dt_fechamento_trated'])
-        .dt.strftime("%d/%m/%Y")
-    )
-    st.dataframe(df_z369[colunas_z369].sort_values(
-        by="dt_abertura_trated", ascending=False).reset_index(drop=True))
+        df_z369['dt_fechamento_trated'] = (
+            pd.to_datetime(df_z369['dt_fechamento_trated'])
+            .dt.strftime("%d/%m/%Y")
+        )
+        st.dataframe(df_z369[colunas_z369].sort_values(
+            by="dt_abertura_trated", ascending=False).reset_index(drop=True))
+    except Exception as e:
+        print(f"Erro ao exibir dados df_z369: {e}")
+    st.write("---")
 
-    st.markdown("## Dados WCM")
-    st.markdown("### Dados de medição de Impacto de Roda - WAYSIDE Wheel Impact")
+    try:  # WCM
+        st.markdown("## Dados WCM")
+        st.markdown(
+            "### Dados de medição de Impacto de Roda - WAYSIDE Wheel Impact")
 
-    colunas_zWCM = [
-        "json_header",
-        "json_Identificação do veículo",
-        "json_Força de pico de impacto da roda (kN)",
-        "Data",
-        "json_trem_TrainTime",
-        "json_Lateral da linha",
-        "json_trem_L_Dir",
-        "json_Tipo do veículo"
-    ]
-    st.dataframe(df_WCM[colunas_zWCM].sort_values(
-        by="Data", ascending=False).reset_index(drop=True))
+        colunas_zWCM = [
+            "json_header",
+            "json_Identificação do veículo",
+            "json_Força de pico de impacto da roda (kN)",
+            "Data",
+            "json_trem_TrainTime",
+            "json_Lateral da linha",
+            "json_trem_L_Dir",
+            "json_Tipo do veículo"
+        ]
+        st.dataframe(df_WCM[colunas_zWCM].sort_values(
+            by="Data", ascending=False).reset_index(drop=True))
+    except Exception as e:
+        print(f"Erro ao exibir dados df_WCM: {e}")
+    st.write("---")
 
-    st.markdown("## Dados TRKV")
-    st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
+    try:  # trkv
+        st.markdown("## Dados TRKV")
+        st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
 
-    colunas_TRKV = [
-        "Header_TrainSequenceNumber",
-        "CarOrientation",
-        "CarIDInitial",
-        "CarIDNumber",
-        "max_valor",
-        "A#L_1",
-        "A#L_2",
-        "A#R_1",
-        "A#R_2",
-        "B#L_1",
-        "B#L_2",
-        "B#R_1",
-        "B#R_2",
-        "STATUS_out"
-    ]
+        colunas_TRKV = [
+            "Header_TrainSequenceNumber",
+            "CarOrientation",
+            "CarIDInitial",
+            "CarIDNumber",
+            "max_valor",
+            "A#L_1",
+            "A#L_2",
+            "A#R_1",
+            "A#R_2",
+            "B#L_1",
+            "B#L_2",
+            "B#R_1",
+            "B#R_2",
+            "STATUS_out"
+        ]
 
-    st.dataframe(
-        df_trkv[colunas_TRKV]
-        .sort_values(by="max_valor", ascending=False)
-        .reset_index(drop=True)
-    )
-    st.markdown("## Dados z851")
-    st.markdown("### Cadastro do vagão")
-    st.dataframe(df_z851)
-    st.markdown("## Dados z1568")
-    st.markdown("### Liberações e Retenções")
-    st.dataframe(df_z1568)
+        st.dataframe(
+            df_trkv[colunas_TRKV]
+            .sort_values(by="max_valor", ascending=False)
+            .reset_index(drop=True)
+        )
+    except Exception as e:
+        print(f"Erro ao exibir dados df_trkv: {e}")
+    st.write("---")
+
+    try:
+        st.markdown("## Dados z851")
+        st.markdown("### Cadastro do vagão")
+        st.dataframe(df_z851)
+    except Exception as e:
+        print(f"Erro ao exibir dados df_z851: {e}")
+
+    st.write("---")
+
+    try:
+        st.markdown("## Dados z1568")
+        st.markdown("### Liberações e Retenções")
+        st.dataframe(df_z1568)
+    except Exception as e:
+        print(f"Erro ao exibir dados df_z1568: {e}")
+    st.write("---")
 # Tela -----------------------
 
