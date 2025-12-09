@@ -5,10 +5,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import plotly.express as px
-# Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
-COLLECTION_NAME = "z369_full"
+#Configurações MongoDB
+MONGO_URI = st.secrets.database_dev.MONGO_URI
+DB_NAME = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+# MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+# DB_NAME = "supervisorio"
+# MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+# DB_NAME_PRD = "inteligencia_MR"
+COLLECTION_NAME = "SAP_z369_notas"
 
 st.set_page_config(layout="wide")
 with open("css/style.css", "r", encoding="utf-8") as f:
@@ -17,9 +23,9 @@ with open("css/style.css", "r", encoding="utf-8") as f:
 #-------------------------------------------------------------------------------------
 #Importar DADOS
 @st.cache_data(ttl=600)
-def function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, COLLECTION_NAME):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_total_ativos_por_tipo(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     pipeline = [
     {
@@ -47,7 +53,7 @@ def function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, COLLECTION_NAME):
     
 st.title("Gestão de Ativos - Vagões")
 #Importando para dataframe
-df= function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, "z369_full")
+df= function_to_get_total_ativos_por_tipo(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas")
 #Criando coluna mes
 #df['mes'] = df['dt_abertura_trated'].dt.to_period('M')
 df["mes"] = pd.to_datetime(df["dt_abertura_trated"], format="%Y-%m")
@@ -60,9 +66,9 @@ df2 = df
 #df['lag_2'] = df['mes'].shift(1)
 
 @st.cache_data(ttl=600)
-def function_to_get_data_from_z369(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10000):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_data_from_z369(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME, lines=10000):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     # Buscar últimos documentos ordenados por timestamp decrescente
     docs = collection.find().sort("dt_abertura_trated", -1).limit(lines)
@@ -82,8 +88,8 @@ df2 = df2.groupby(['mes', 'DESC STATUS'],as_index=False)['DESC STATUS'].value_co
 #df2 = df2.groupby('mes')['DESC STATUS'].count()
 #df2 = df2.groupby('DESC STATUS')['mes'].count()
 #df2 = df2['DESC STATUS'].value_counts()
-df_Z369= function_to_get_data_from_z369(MONGO_URI, DB_NAME, "z369_full")
-df_Z369_1= function_to_get_data_from_z369(MONGO_URI, DB_NAME, "z369_full")
+df_Z369= function_to_get_data_from_z369(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas")
+df_Z369_1= function_to_get_data_from_z369(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas")
 df_Z369_1['mes'] = df_Z369_1['data_sincronizacao'].dt.to_period('M')
 cont1 = df_Z369['DESC STATUS'].value_counts()
 col5, col6, col7 = st.columns(3)
