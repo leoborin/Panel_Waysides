@@ -8,8 +8,15 @@ import math
 
 
 # Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
+#Configurações MongoDB
+MONGO_URI = st.secrets.database_dev.MONGO_URI
+DB_NAME = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+# MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+# DB_NAME = "supervisorio"
+# MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+# DB_NAME_PRD = "inteligencia_MR"
 
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
@@ -21,13 +28,13 @@ variavel_ativo =""
 
 
 # Função para conectar e buscar dados
-DB_NAME= "supervisorio"
-COLLECTION_NAME="CadastroVagoes_full"
+DB_NAME= "inteligencia_MR"
+COLLECTION_NAME="SAP_z851_CadastroVagoes"
 
 @st.cache_data(ttl=600)
-def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     # Buscar últimos 5 documentos ordenados por timestamp decrescente
     docs = list(collection.find().sort("timestamp", -1).limit(10000))
@@ -41,9 +48,9 @@ def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME):
         return pd.DataFrame()  # DataFrame vazio
     
 @st.cache_data(ttl=600)
-def function_to_get_data_pipeline(MONGO_URI, DB_NAME, COLLECTION_NAME, pipeline):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_data_pipeline(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME, pipeline):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     docs = list(collection.aggregate(pipeline))
     if docs:
@@ -55,7 +62,7 @@ def function_to_get_data_pipeline(MONGO_URI, DB_NAME, COLLECTION_NAME, pipeline)
     else:
         return pd.DataFrame()  # DataFrame vazio
 
-df = function_to_get_data(MONGO_URI, DB_NAME, "CadastroVagoes_full")
+df = function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z851_CadastroVagoes")
 #df = df.groupby(["STATUS"]).value_counts()
 df2 = df
 df2 = df2.groupby(['MODELO', 'STATUS'],as_index=False)['STATUS'].value_counts()
@@ -125,12 +132,12 @@ col1, col2 = st.columns(2)
 with col1:
     #st.header("Ranking Vagões com mais Notas abertas")
     st.markdown("<h1 style='font-size:29px;'>Ranking Vagões com mais Notas M1 e M2 abertas</h1>", unsafe_allow_html=True)
-    df_notas1 = function_to_get_data_pipeline(MONGO_URI, DB_NAME, "z369_full",pipeline).sort_values("totalNotes", ascending=False).reset_index(drop=True)
+    df_notas1 = function_to_get_data_pipeline(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas",pipeline).sort_values("totalNotes", ascending=False).reset_index(drop=True)
     df_notas1.rename(columns={'_id': 'ATIVOS', 'totalNotes': 'Total de Notas Abertas por ATIVO'}, inplace=True)
     st.dataframe(df_notas1)
 
 with col2:
-    df_notas2 = function_to_get_data_pipeline(MONGO_URI, DB_NAME, "z369_full",pipeline1)
+    df_notas2 = function_to_get_data_pipeline(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas",pipeline1)
     df_notas2 = df_notas2[df_notas2["TP NOTA"] == "M2"].sort_values("NOTAS_COUNT", ascending=False).reset_index(drop=True)
     #df_notas2 = df_notas2[["ATIVO", "TP NOTA", "NOTAS_COUNT"]]
     df_notas2 = df_notas2[["ATIVO", "NOTAS_COUNT"]]
@@ -217,9 +224,9 @@ pipeline3=[
         }
     }
 ]
-df_notas3 = function_to_get_data_pipeline(MONGO_URI, DB_NAME, "z369_full",pipeline3)
+df_notas3 = function_to_get_data_pipeline(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z369_notas",pipeline3)
 
-df_TRKV = function_to_get_data_pipeline(MONGO_URI, DB_NAME, "TRKV_trated2", pipelineTRKV)
+df_TRKV = function_to_get_data_pipeline(MONGO_URI_PRD, DB_NAME_PRD, "TRKV_treated", pipelineTRKV)
 df_TRKV = df_TRKV.drop(columns=['_id', 'CarIDInitial','CarIDNumber', 'CarSequenceNumber','TruckFields', 'TruckIDs','TruckValues','Header_TrainSequenceNumber_int','CarType','timestr'], errors='ignore')
 df_TRKV = df_TRKV.sort_values("timestr_dt", ascending=False).set_index('concatenatedCarID').reset_index()
 df_TRKV['media_A#L_1'] = df_TRKV['A#L_1'].dropna().mean()
