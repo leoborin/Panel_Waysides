@@ -6,9 +6,15 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-# Configurações MongoDB
-MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
-DB_NAME = "supervisorio"
+#Configurações MongoDB
+MONGO_URI = st.secrets.database_dev.MONGO_URI
+DB_NAME = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+# MONGO_URI = "mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin"
+# DB_NAME = "supervisorio"
+# MONGO_URI_PRD = "mongodb+srv://devcim:qWAA30QI4k540S@rumo-dev.eqds1.mongodb.net/"
+# DB_NAME_PRD = "inteligencia_MR"
 
 st.set_page_config(layout="wide")
 logo = Image.open("assets/logo.png")
@@ -64,9 +70,9 @@ pipeline2 =[
 # Função para conectar e buscar dados
 
 @st.cache_data(ttl=600)
-def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME,PIPELINE):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME,PIPELINE):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     docs = list(collection.aggregate(PIPELINE))
     if docs:
@@ -79,9 +85,9 @@ def function_to_get_data(MONGO_URI, DB_NAME, COLLECTION_NAME,PIPELINE):
         return pd.DataFrame()  # DataFrame vazio
 
 @st.cache_data(ttl=600)
-def function_to_get_data_from_z369(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10000):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_data_from_z369(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME, lines=10000):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
     # Buscar últimos documentos ordenados por timestamp decrescente
     docs = collection.find().sort("dt_abertura_trated", -1).limit(lines)
@@ -97,9 +103,9 @@ def function_to_get_data_from_z369(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10
         return pd.DataFrame()  # DataFrame vazio
 
 @st.cache_data(ttl=600)
-def function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, COLLECTION_NAME, lines=10000):
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+def function_to_get_total_ativos_por_tipo(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME, lines=10000):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
     collection = db[COLLECTION_NAME]
         
     pipeline = [
@@ -137,7 +143,7 @@ def function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, COLLECTION_NAME, l
         return pd.DataFrame()  # DataFrame vazio
 
 st.title("Gestão de Ativos - Vagões")
-ativos_total= function_to_get_total_ativos_por_tipo(MONGO_URI, DB_NAME, "CadastroVagoes_full")
+ativos_total= function_to_get_total_ativos_por_tipo(MONGO_URI_PRD, DB_NAME_PRD, "SAP_z851_CadastroVagoes")
 
 N_COLS = 4
 cols = st.columns(N_COLS)
@@ -155,8 +161,8 @@ for i, row in ativos_total.iterrows():
 
 st.title("Vagões Retidos")
 
-df_ret = function_to_get_data(MONGO_URI,DB_NAME,"z1568_Liberacoes_Retencoes_full", pipeline2)
-df_1 = function_to_get_data(MONGO_URI,DB_NAME,"z1568_Liberacoes_Retencoes_full", pipeline2)
+df_ret = function_to_get_data(MONGO_URI_PRD,DB_NAME_PRD,"SAP_z1568_LiberacoesRetencoes", pipeline2)
+df_1 = function_to_get_data(MONGO_URI_PRD,DB_NAME_PRD,"SAP_z1568_LiberacoesRetencoes", pipeline2)
 df_1 = df_1.drop(['dt_fim_trated', 'DATA_ABERTURA_INT','dt_modificacao_trated'], axis=1)
 df5=df_1
 #df3 = df_ret.groupby("RETENCAO")["RETENCAO"].value_counts()
