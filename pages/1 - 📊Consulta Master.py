@@ -24,7 +24,7 @@ eqnr = st.query_params.get("eqnr")
 with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-#Configurações MongoDB
+# Configurações MongoDB
 MONGO_URI = st.secrets.database_dev.MONGO_URI
 DB_NAME = st.secrets.database_dev.DB_NAME
 MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
@@ -95,6 +95,77 @@ def tratar_outliers_trkv(df):
 
 
 def busca_dados(vagao):
+
+    def busca_versonota(vagao):
+        try:
+            vagao = int(vagao)
+            client = MongoClient(MONGO_URI_PRD)
+
+            # -----------------------------------------
+            # 1) Filtro seguro (busca exata, não parcial)
+            # -----------------------------------------
+
+            filter = {'ATIVO_TL': re.compile(f"{vagao}")}
+
+            cursor = client[DB_NAME_PRD]["SAP_verso_nota"].find(filter)
+
+            # -----------------------------------------
+            # 2) Converter cursor → DataFrame
+            # -----------------------------------------
+            df = pd.DataFrame(list(cursor))
+
+            # Se cursor vazio → retorna df vazio
+            if df.empty:
+                print("versonota: Nenhum registro encontrado → retornando df vazio")
+                return pd.DataFrame()
+
+            # -----------------------------------------
+            # 4) Remover _id se existir
+            # -----------------------------------------
+            df.drop(columns=["_id"], errors="ignore", inplace=True)
+
+            return df
+
+        except Exception as e:
+            # Captura qualquer erro e retorna df vazio
+            print(f"Erro ao consultar versonota: {e}")
+            return pd.DataFrame()
+
+    def busca_censo(vagao):
+        try:
+            vagao = int(vagao)
+            client = MongoClient(MONGO_URI_PRD)
+
+            # -----------------------------------------
+            # 1) Filtro seguro (busca exata, não parcial)
+            # -----------------------------------------
+
+            filter = {'Equipamento': re.compile(f"{vagao}")}
+
+            cursor = client[DB_NAME_PRD]["SAP_censo_trated"].find(filter)
+
+            # -----------------------------------------
+            # 2) Converter cursor → DataFrame
+            # -----------------------------------------
+            df = pd.DataFrame(list(cursor))
+
+            # Se cursor vazio → retorna df vazio
+            if df.empty:
+                print("censo: Nenhum registro encontrado → retornando df vazio")
+                return pd.DataFrame()
+
+            # -----------------------------------------
+            # 4) Remover _id se existir
+            # -----------------------------------------
+            df.drop(columns=["_id"], errors="ignore", inplace=True)
+
+            return df
+
+        except Exception as e:
+            # Captura qualquer erro e retorna df vazio
+            print(f"Erro ao consultar censo: {e}")
+            return pd.DataFrame()
+
     def busca_TBOGI(vagao):
         try:
             vagao = int(vagao)
@@ -276,7 +347,7 @@ def busca_dados(vagao):
 
             # Converter o cursor em lista e depois em DataFrame
             df = pd.DataFrame(list(cursor))
-            print(df[['CarIDNumber', 'timestamp']].head())
+            # print(df[['CarIDNumber', 'timestamp']].head())
 
             # (Opcional) Remover a coluna _id, se não for necessária
             if '_id' in df.columns:
@@ -361,7 +432,9 @@ def busca_dados(vagao):
             busca_z1568,
             busca_Tela164,
             busca_SAT_TAREFAS_full,
-            busca_TBOGI
+            busca_TBOGI,
+            busca_censo,
+            busca_versonota
         ]
 
         resultados = {}
@@ -392,18 +465,22 @@ def busca_dados(vagao):
     df_164 = result["busca_Tela164"]
     df_SAT_TAREFAS_full = result["busca_SAT_TAREFAS_full"]
     df_busca_TBOGI = result["busca_TBOGI"]
+    df_censo = result["busca_censo"]
+    df_versonota = result["busca_versonota"]
 
     print("df_WCM:", len(df_WCM))
     print("df_z369:", len(df_z369))
-    #print("df_trkv:", len(df_trkv))
+    # print("df_trkv:", len(df_trkv))
     print("df_z851:", len(df_z851))
     print("df_z1568:", len(df_z1568))
     print("df_164:", len(df_164))
     print("df_SAT_TAREFAS_full:", len(df_SAT_TAREFAS_full))
     print("df_busca_TBOGI:", len(df_busca_TBOGI))
+    print("df_censo:", len(df_censo))
+    print("df_versonota:", len(df_versonota))
     st.success("Função executada com sucesso!")
 
-    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI
+    return df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI, df_censo, df_versonota
 
 
 def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
@@ -425,7 +502,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
 
     def tratar_trkv(df_trkv):
 
-        print(df_trkv[['CarIDNumber', 'timestamp']].head())
+        # print(df_trkv[['CarIDNumber', 'timestamp']].head())
 
         # Criar coluna Data
         df_trkv['Data'] = df_trkv['timestamp'].dt.date
@@ -523,7 +600,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
 
 def inserir_TBOGI_hist(df_TBOGI_trated):
     df_TBOGI_trated_histgeral = df_TBOGI_trated.copy()
-    # print(df_TBOGI_trated)
+    # #print(df_TBOGI_trated)
     # 1) Garantir datetime (com hora) na coluna timestamp_received
     df_TBOGI_trated_histgeral['INICIO'] = pd.to_datetime(
         df_TBOGI_trated_histgeral['timestamp_received'])
@@ -550,7 +627,7 @@ def inserir_TBOGI_hist(df_TBOGI_trated):
 
 def inserir_wcm_hist(df_wcm_trated):
     df_wcm_trated_histgeral = df_wcm_trated.copy()
-    # print(df_wcm_trated)
+    # #print(df_wcm_trated)
     # 1) Garantir datetime (com hora) na coluna Data
     df_wcm_trated_histgeral['INICIO'] = pd.to_datetime(
         df_wcm_trated_histgeral['Data'])
@@ -577,7 +654,7 @@ def inserir_wcm_hist(df_wcm_trated):
 def inserir_trkv_hist(df_trkv_trated):
     df_trkv_trated_histgeral = df_trkv_trated.copy()
     print("df_trkv_trated = com erro")
-    print(df_trkv_trated)
+    # print(df_trkv_trated)
     # 1) Garantir datetime (com hora) na coluna Data
     df_trkv_trated_histgeral['INICIO'] = pd.to_datetime(
         df_trkv_trated_histgeral['Data'])
@@ -662,23 +739,23 @@ if st.button("Executar função"):
         vg_entrada = tratar_entrada(vg_entrada)
         minha_funcao(vg_entrada)
 
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI = busca_dados(
+        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI, df_censo, df_versonota = busca_dados(
             vg_entrada)
         print("df_trkv")
-        print(df_trkv)
+        # print(df_trkv)
 
         try:
             df_trkv = tratar_outliers_trkv(df_trkv)
             print("df_trkv_outliers")
-            print(df_trkv)
+            # print(df_trkv)
         except Exception as e:
             print(f"Erro ao tratar outliers df_trkv: {e}")
 
-        # print(df_trkv.head())
+        # #print(df_trkv.head())
         df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
             df_WCM, df_z369, df_trkv, df_busca_TBOGI)
         print("df_trkv_trated")
-        print(df_trkv_trated)
+        # print(df_trkv_trated)
 
 
 # ===== CSS Google Material =====
@@ -904,13 +981,13 @@ if st.button("Executar função"):
                 print(f"Erro : {e}")
                 df_TBOGI_timeline = pd.DataFrame()
 
-            # print(df_z1568_timeline)
+            # #print(df_z1568_timeline)
 
             print("validation")
 
             df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,
                                  df_trkv_timeline, df_TBOGI_timeline], ignore_index=True)
-            # print(df_final)
+            # #print(df_final)
 
             df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
                 lambda x: "" if x in ["WCM", "trkv", "TBOGI"] else x
@@ -1060,7 +1137,7 @@ if st.button("Executar função"):
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
     print("validation2")
-    # print(df_trkv_trated)
+    # #print(df_trkv_trated)
     try:
         import numpy as np
         import pandas as pd
@@ -1371,8 +1448,9 @@ if st.button("Executar função"):
             if pd.isna(code) or code == 0:
                 label = "inválido"
             else:
-                label = MAP_WEDGE.get(int(code), "inválido")  # int() se o dtype vier float
- 
+                # int() se o dtype vier float
+                label = MAP_WEDGE.get(int(code), "inválido")
+
             st.markdown(f'Tipo de Truque:  **{label}**')
             fig_trkv.update_layout(
                 # legenda horizontal abaixo do gráfico
@@ -1380,7 +1458,7 @@ if st.button("Executar função"):
             )
             st.plotly_chart(fig_trkv, width="stretch",
                             key="plot_trkv")
-            #st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
+            # st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
             st.markdown(f"""
             **R²:** `{r2:.4f}`
             **MAE:** `{mae:.4f}`
@@ -1441,7 +1519,7 @@ if st.button("Executar função"):
         import pandas as pd
         import json
 
-        st.write("---")
+        # st.write("---")
         st.markdown(f"### Tarefas Realizadas em Manutenção")
 
         # Converter DataFrame para lista de dicionários
@@ -1664,8 +1742,16 @@ if st.button("Executar função"):
         print(f"Erro ao exibir TELA SAT: {e}")
     st.write("---")
 # ------------------------
+
     try:  # 164
-        st.markdown("## Dados df_164")
+        st.markdown("## Dados SAP censo")
+        st.markdown("### Informações técnicas última Manutenção")
+        st.dataframe(df_censo)
+    except Exception as e:
+        print(f"Erro ao exibir dados senso: {e}")
+    st.write("---")
+    try:  # 164
+        st.markdown("## Dados Tela 164 Translogic")
         st.markdown("### Posicionamento mais recente e Carga - Translogic")
         st.dataframe(df_164)
     except Exception as e:
@@ -1673,7 +1759,7 @@ if st.button("Executar função"):
 
     st.write("---")
     try:  # z369
-        st.markdown("## Dados z369")
+        st.markdown("## Dados Tela z369 SAP")
         st.markdown("### Dados de Notas de Manutenção - SAP")
         colunas_z369 = [
             "NOTA",
@@ -1755,7 +1841,7 @@ if st.button("Executar função"):
     st.write("---")
 
     try:
-        st.markdown("## Dados z851")
+        st.markdown("## Dados SAP sz851")
         st.markdown("### Cadastro do vagão")
         st.dataframe(df_z851)
     except Exception as e:
@@ -1764,11 +1850,116 @@ if st.button("Executar função"):
     st.write("---")
 
     try:
-        st.markdown("## Dados z1568")
+        st.markdown("## Dados SAP z1568")
         st.markdown("### Liberações e Retenções")
         st.dataframe(df_z1568)
     except Exception as e:
         print(f"Erro ao exibir dados df_z1568: {e}")
     st.write("---")
-# Tela -----------------------
 
+    try:
+        st.markdown("## Dados df_versonota")
+        st.markdown("### Anotações de Verso de Notas")
+        st.dataframe(df_versonota)
+    except Exception as e:
+        print(f"Erro ao exibir dados df_versonota: {e}")
+    st.write("---")
+
+    import streamlit as st
+    import pandas as pd
+    import re
+
+    # ----------------------------------------------------
+    # FUNÇÃO PARA FORMATAR O TEXTO BRUTO DO VERSO DA NOTA
+    # ----------------------------------------------------
+    def formatar_texto_avaria(texto):
+        if not isinstance(texto, str):
+            return ""
+
+        partes = [p.strip() for p in texto.split(";") if p.strip()]
+        linhas_formatadas = []
+
+        for parte in partes:
+
+            # Títulos principais numerados (ex: 1. TITULO)
+            if re.match(r'^\d+\.', parte):
+                titulo = parte.replace(",,", " ").strip()
+                linhas_formatadas.append(f"\n### **{titulo}**\n")
+                continue
+
+            # Subtítulos tipo 3.1, 3.2
+            if re.match(r'^\d+\.\d+', parte):
+                linhas_formatadas.append(f"#### {parte}\n")
+                continue
+
+            # Campos do tipo "Chave: Valor"
+            if ":" in parte:
+                chave, valor = parte.split(":", 1)
+                linhas_formatadas.append(
+                    f"- **{chave.strip()}**: {valor.strip()}")
+                continue
+
+            # Linhas tipo RD1, RD2, Truque A...
+            if re.match(r'^[A-Za-z0-9 ].*\(', parte):
+                linhas_formatadas.append(f"- {parte}")
+                continue
+
+            # Caso geral
+            linhas_formatadas.append(parte)
+
+        return "\n".join(linhas_formatadas)
+
+    # ----------------------------------------------------
+    # INÍCIO DA APLICAÇÃO STREAMLIT
+    # ----------------------------------------------------
+
+    st.title("📄 Visualizador do Verso da Nota (df_versonota)")
+
+    # Carregue seu dataframe (apenas exemplo):
+    # df_versonota = pd.read_csv("dados.csv")
+
+    # Verifica se existe coluna QMNUM
+    if "QMNUM" not in df_versonota.columns:
+        st.error("⚠️ A coluna 'QMNUM' não existe no df_versonota!")
+        st.stop()
+
+    # Verifica se existe coluna com o texto bruto
+    coluna_texto = "VERSO"  # ❗ AJUSTE AQUI se for outro nome
+    if coluna_texto not in df_versonota.columns:
+        st.error(f"⚠️ A coluna '{coluna_texto}' não existe no df_versonota!")
+        st.stop()
+
+    # Criar coluna formatada
+    df_versonota["texto_formatado"] = df_versonota[coluna_texto].apply(
+        formatar_texto_avaria)
+
+    # Inicializar estado
+    if "pos" not in st.session_state:
+        st.session_state.pos = 0
+
+    # -----------------------
+    # BOTÕES DE NAVEGAÇÃO
+    # -----------------------
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col1:
+        if st.button("⬅️ Anterior") and st.session_state.pos > 0:
+            st.session_state.pos -= 1
+
+    with col3:
+        if st.button("➡️ Próximo") and st.session_state.pos < len(df_versonota) - 1:
+            st.session_state.pos += 1
+
+    # -----------------------
+    # EXIBIR QMNUM E TEXTO
+    # -----------------------
+    registro_atual = df_versonota.iloc[st.session_state.pos]
+
+    st.markdown(f"### 📌 QMNUM: **{registro_atual['QMNUM']}**")
+    st.write(f"Registro {st.session_state.pos + 1} de {len(df_versonota)}")
+    st.write("---")
+
+    st.markdown(registro_atual["texto_formatado"])
+
+    st.write("---")
+    st.success("Navegação entre registros carregada com sucesso!")
