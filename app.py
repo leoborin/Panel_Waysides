@@ -89,7 +89,7 @@ with cols[1]:
 <button id="consulta-btn" class="card-button">
 <h3>🤖 Chat Bot</h3>
 <p>Consulte nossa base de dados conversando com chatbot</p>
-<div class="tag tag-ativo">Ativo</div>
+<div class="tag tag-ativo">Atualizando</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -98,8 +98,8 @@ with cols[1]:
 <a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Resumo_Vagões" target="_self">
 <button id="consulta-btn" class="card-button">
 <h3>Resumo Vagões</h3>
-<p>Realize uma pesquisa detalhada de cada Ativo</p>
-<div class="tag tag-ativo">Novo</div>
+<p>Compilado Resumo dos Ativos</p>
+<div class="tag tag-ativo">Em dev</div>
 </button>
 </a>
 """, unsafe_allow_html=True)
@@ -115,11 +115,11 @@ with cols[2]:
 """, unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
-<a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Consulta_Master" target="_self">
+<a href="" target="_self">
 <button id="consulta-btn" class="card-button">
-<h3>Consulta Master</h3>
-<p>Realize uma pesquisa detalhada de cada Ativo</p>
-<div class="tag tag-ativo">Ativo</div>
+<h3></h3>
+<p></p>
+<div class="tag tag-breve"></div>
 </button>
 </a>
 """, unsafe_allow_html=True)
