@@ -760,6 +760,7 @@ if st.button("Executar função"):
 
 # ===== CSS Google Material =====
 
+
         def resumo_z1568():
             st.markdown("""
             <style>
@@ -1259,6 +1260,7 @@ if st.button("Executar função"):
 
 # -------------------------------------------------------------------Regressão
 
+
     def plot_Waysides():
         try:
             fig_trkv = go.Figure()
@@ -1387,7 +1389,7 @@ if st.button("Executar função"):
         # TBOGI
         # =========================
         try:
-            df_TBOGI_trated["Alarme"] = 10
+            df_TBOGI_trated["Alarme"] = 15
             df_TBOGI_trated.rename(
                 columns={"timestamp_received": "Data"}, inplace=True)
 
@@ -1858,108 +1860,173 @@ if st.button("Executar função"):
     st.write("---")
 
     try:
+        # Selecionar apenas as colunas desejadas
+        def tratar_versos(df):
+
+            df_clean = df_versonota[[
+                "QMDAT", "QMNUM", "ATIVO_TL", "VERSO"]].copy()
+
+            # ---- Tratamento da data QMDAT ----
+            # QMDAT vem no formato YYYYMMDD como inteiro
+            df_clean["QMDAT"] = (
+                df_clean["QMDAT"]
+                .astype(str)
+                .str.zfill(8)                # garante 8 dígitos
+                # formata para YYYY-MM-DD
+                .apply(lambda x: f"{x[0:4]}-{x[4:6]}-{x[6:8]}")
+            )
+
+            return df_clean
         st.markdown("## Dados df_versonota")
         st.markdown("### Anotações de Verso de Notas")
-        st.dataframe(df_versonota)
+        st.dataframe(tratar_versos(df_versonota))
     except Exception as e:
         print(f"Erro ao exibir dados df_versonota: {e}")
     st.write("---")
 
-    import streamlit as st
-    import pandas as pd
-    import re
+    # ----------------------------------------------------
+    # FORMATADOR DE TEXTO
+    # ----------------------------------------------------
 
-    # ----------------------------------------------------
-    # FUNÇÃO PARA FORMATAR O TEXTO BRUTO DO VERSO DA NOTA
-    # ----------------------------------------------------
     def formatar_texto_avaria(texto):
         if not isinstance(texto, str):
             return ""
 
         partes = [p.strip() for p in texto.split(";") if p.strip()]
-        linhas_formatadas = []
+        linhas = []
 
         for parte in partes:
 
-            # Títulos principais numerados (ex: 1. TITULO)
-            if re.match(r'^\d+\.', parte):
-                titulo = parte.replace(",,", " ").strip()
-                linhas_formatadas.append(f"\n### **{titulo}**\n")
+            if re.match(r'^\d+\.', parte):  # Título principal
+                linhas.append(
+                    f"<h4 style='margin-top:12px;color:#1F4E79'><b>{parte}</b></h4>")
                 continue
 
-            # Subtítulos tipo 3.1, 3.2
-            if re.match(r'^\d+\.\d+', parte):
-                linhas_formatadas.append(f"#### {parte}\n")
+            if re.match(r'^\d+\.\d+', parte):  # Subtítulo
+                linhas.append(f"<b style='color:#3A3A3A'>{parte}</b><br>")
                 continue
 
-            # Campos do tipo "Chave: Valor"
             if ":" in parte:
                 chave, valor = parte.split(":", 1)
-                linhas_formatadas.append(
-                    f"- **{chave.strip()}**: {valor.strip()}")
+                linhas.append(
+                    f"<div style='margin-left:10px;'>• <b>{chave.strip()}</b>: {valor.strip()}</div>")
                 continue
 
-            # Linhas tipo RD1, RD2, Truque A...
-            if re.match(r'^[A-Za-z0-9 ].*\(', parte):
-                linhas_formatadas.append(f"- {parte}")
-                continue
+            linhas.append(parte + "<br>")
 
-            # Caso geral
-            linhas_formatadas.append(parte)
-
-        return "\n".join(linhas_formatadas)
+        return "\n".join(linhas)
 
     # ----------------------------------------------------
-    # INÍCIO DA APLICAÇÃO STREAMLIT
+    # STREAMLIT
     # ----------------------------------------------------
 
-    st.title("📄 Visualizador do Verso da Nota (df_versonota)")
+    st.title("📄 Visualizador do Verso da Nota")
 
-    # Carregue seu dataframe (apenas exemplo):
-    # df_versonota = pd.read_csv("dados.csv")
+    coluna_texto = "VERSO"
 
-    # Verifica se existe coluna QMNUM
     if "QMNUM" not in df_versonota.columns:
-        st.error("⚠️ A coluna 'QMNUM' não existe no df_versonota!")
+        st.error("A coluna QMNUM não existe.")
         st.stop()
 
-    # Verifica se existe coluna com o texto bruto
-    coluna_texto = "VERSO"  # ❗ AJUSTE AQUI se for outro nome
     if coluna_texto not in df_versonota.columns:
-        st.error(f"⚠️ A coluna '{coluna_texto}' não existe no df_versonota!")
+        st.error("A coluna VERSO não existe.")
         st.stop()
 
-    # Criar coluna formatada
     df_versonota["texto_formatado"] = df_versonota[coluna_texto].apply(
         formatar_texto_avaria)
 
-    # Inicializar estado
-    if "pos" not in st.session_state:
-        st.session_state.pos = 0
+    registros = df_versonota[["QMNUM", "QMDAT",
+                              "texto_formatado"]].to_dict(orient="records")
+    df_versonota["QMDAT"] = (
+        df_versonota["QMDAT"]
+        .astype(str)
+        .str.zfill(8)                # garante 8 dígitos
+        # formata para YYYY-MM-DD
+        .apply(lambda x: f"{x[0:4]}-{x[4:6]}-{x[6:8]}")
+    )
 
-    # -----------------------
-    # BOTÕES DE NAVEGAÇÃO
-    # -----------------------
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # ----------------------------------------------------
+    # HTML + CSS + JS (CARD À ESQUERDA)
+    # ----------------------------------------------------
+    st.components.v1.html(f"""
 
-    with col1:
-        if st.button("⬅️ Anterior") and st.session_state.pos > 0:
-            st.session_state.pos -= 1
+    <style>
+        .card {{
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-left: 0px;
+            max-width: 650px;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
+        }}
+        .nav-buttons {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }}
+        .btn-nav {{
+            flex: 1;
+            padding: 12px;
+            margin: 4px;
+            background: #1F4E79;
+            color: white;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }}
+        .btn-nav:disabled {{
+            background: #A0A0A0;
+            cursor: not-allowed;
+        }}
+    </style>
 
-    with col3:
-        if st.button("➡️ Próximo") and st.session_state.pos < len(df_versonota) - 1:
-            st.session_state.pos += 1
+    <div class="card">
 
-    # -----------------------
-    # EXIBIR QMNUM E TEXTO
-    # -----------------------
-    registro_atual = df_versonota.iloc[st.session_state.pos]
+        <div class="nav-buttons">
+            <button id="prevBtn" class="btn-nav">⬅️ Anterior</button>
+            <button id="nextBtn" class="btn-nav">Próximo ➡️</button>
+        </div>
 
-    st.markdown(f"### 📌 QMNUM: **{registro_atual['QMNUM']}**")
-    st.write(f"Registro {st.session_state.pos + 1} de {len(df_versonota)}")
-    st.write("---")
+        <h3 id="qmnum" style="margin-bottom:4px;"></h3>
+        <p id="qmdat" style="margin-top:-8px; color:#777;"></p>
+        <p id="pos" style="color:#555; margin-top:4px;"></p>
 
-    st.markdown(registro_atual["texto_formatado"])
+        <div id="texto" style="margin-top: 15px; font-size: 16px; line-height: 1.45;"></div>
 
-    st.write("---")
-    st.success("Navegação entre registros carregada com sucesso!")
+    </div>
+
+    <script>
+        const registros = {json.dumps(registros)};
+        let pos = 0;
+
+        function render() {{
+            const r = registros[pos];
+
+            document.getElementById("qmnum").innerHTML =
+                "📌 QMNUM: <b>" + r.QMNUM + "</b>";
+
+            document.getElementById("qmdat").innerHTML =
+                "📅 Data: <b>" + (r.QMDAT ?? "").slice(0, 10) + "</b>";
+
+            document.getElementById("pos").innerHTML =
+                "Registro " + (pos+1) + " de " + registros.length;
+
+            document.getElementById("texto").innerHTML = r.texto_formatado;
+
+            document.getElementById("prevBtn").disabled = (pos === 0);
+            document.getElementById("nextBtn").disabled = (pos === registros.length - 1);
+        }}
+
+        document.getElementById("prevBtn").onclick = () => {{
+            if (pos > 0) {{ pos--; render(); }}
+        }}
+
+        document.getElementById("nextBtn").onclick = () => {{
+            if (pos < registros.length-1) {{ pos++; render(); }}
+        }}
+
+        render();
+    </script>
+
+    """, height=750, scrolling=True)
