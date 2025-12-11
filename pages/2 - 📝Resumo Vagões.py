@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 with open("css/style.css", "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-#Configurações MongoDB
+# Configurações MongoDB
 MONGO_URI = st.secrets.database_dev.MONGO_URI
 DB_NAME = st.secrets.database_dev.DB_NAME
 MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
@@ -92,13 +92,24 @@ def busca_dados(vagao):
 
     def busca_TBOGI(vagao):
         try:
+
+            # Conexão com o MongoDB
+            print("Buscando TBOGI...")
+            df_tbogi = pd.read_parquet("./temp/df_tbogi.parquet")
+
+            data_mais_recente = df_tbogi['timestamp_received'].max()
+            print(data_mais_recente)
             vagao = int(vagao)
             client = MongoClient(MONGO_URI)
 
             # -------------------------
             # 1) Filtro por car_num
             # -------------------------
+            # filter = {"timestamp_received": {"$gte": data_mais_recente}}
+            # Definição do filtro
             filter = {}
+            filter = {'car_init': {'$ne': "ZZZZ"},
+                      "timestamp_received": {"$gte": data_mais_recente}}
 
             cursor = client[DB_NAME]["tbogi_treated"].find(filter)
 
@@ -124,12 +135,20 @@ def busca_dados(vagao):
             # 4) Remover _id
             # -------------------------
             df.drop(columns=["_id"], errors="ignore", inplace=True)
+            # (Opcional) Remover a coluna _id, se não for necessária
+            if '_id' in df.columns:
+                df.drop('_id', axis=1, inplace=True)
+
+            df_final = pd.concat(
+                [df_tbogi, df], ignore_index=True).drop_duplicates()
 
             # -------------------------
             # 5) Maior valor por passagem E por car_num
             # -------------------------
+            # df_final = df.copy()
             df_resumo = (
-                df.groupby(["timestamp_received", "car_num"], as_index=False)
+                df_final.groupby(
+                    ["timestamp_received", "car_num"], as_index=False)
                 .agg(max_valor_mod_pd=("valor_mod_pd", "max"))
                 .sort_values(["timestamp_received"])
             )
@@ -709,7 +728,7 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
         .merge(df_last[['key', 'ultima_medicao', 'data_ultima_medicao']],
                on='key', how='left')
     df_final['VAGAO'] = df_final['EQUNR']
-    df_final = df_final[["EQUNR", "VAGAO", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated", "DATA_GARANTIA_trated", "ULTIMA_RG",
+    df_final = df_final[["EQUNR", "VAGAO", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated",  "ULTIMA_RG",
                          "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "TRKV_max_medicao_ultimas_3", "TRKV_ultima_medicao", "TRKV_last_timestamp", "key"]]
 
     df_tratado = df_final.rename(columns={
@@ -722,7 +741,7 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
     # df_tratado['WCM_max_medicao_ultimas_3'] = df_tratado['WCM_max_medicao_ultimas_3'].fillna(0)
     # df_tratado['TRKV_ultima_medicao'] = df_tratado['TRKV_ultima_medicao'].fillna(0)
     # df_tratado['TRKV_max_medicao_ultimas_3'] = df_tratado['TRKV_max_medicao_ultimas_3'].fillna(0)
-    
+
     return df_tratado
 
 
@@ -805,7 +824,6 @@ try:
         "MODELO",
         "STATUS",
         "DATA_DE_FABRICACAO_trated",
-        "DATA_GARANTIA_trated",
         "ULTIMA_RG",
         "KM_RODADO_DESDE_ULTIMA_RG",
 
