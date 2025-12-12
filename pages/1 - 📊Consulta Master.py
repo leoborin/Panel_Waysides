@@ -60,6 +60,7 @@ def tratar_outliers_trkv(df):
         valor > max_3 * 1.30
         valor < min_3 * 0.70
     """
+    df = df.fillna(0)                     
     df["key"] = df["CarIDNumber"].astype(int)
     df["timestamp"] = pd.to_datetime(
         df["timestamp"],  errors="coerce")
@@ -503,7 +504,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
     def tratar_trkv(df_trkv):
 
         # print(df_trkv[['CarIDNumber', 'timestamp']].head())
-
+        df_trkv = df_trkv.fillna(0)
         # Criar coluna Data
         df_trkv['Data'] = df_trkv['timestamp'].dt.date
 
@@ -527,7 +528,7 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
             .rename(columns={"Maior_Impacto_Linha": "TRKV_MAX_Cunha"})
             .sort_values(by=["key", "Data"])
         )
-
+        df_trkv_max = df_trkv_max.fillna(0)
         df_trkv_max["TRKV_MAX_Cunha"] = df_trkv_max["TRKV_MAX_Cunha"].round(2)
 
         return df_trkv_max[["key", "Data", "TRKV_MAX_Cunha", "STATUS_out"]]
@@ -921,31 +922,102 @@ if st.button("Executar função"):
         def resumo_tela164():
 
             dados = df_164.iloc[0]
-
             with st.container():
                 st.write("---")
                 st.markdown(f"### Dados atuais do vagão")
+                dados['DT_CARGA'] = pd.to_datetime(dados['DT_CARGA']).strftime("%d-%m-%Y-%H:%M:%S")
                 st.write(f"**Data Atualização:** {dados['DT_CARGA']}")
-
+                dados = dados.astype('string').fillna('-')
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
 
                     # st.write(f"**Vagão:** {dados['vagão']}")
-                    st.write(f"**Local:** {dados['LOCAL']}")
-                    st.write(f"**Trem:** {dados['TREM']}")
-                    st.write(f"**OS:** {dados['NR_OS']}")
-
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Local:</div>
+                                <div class="card-value">{dados['LOCAL']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Trem:</div>
+                                <div class="card-value">{dados['TREM']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">OS:</div>
+                                <div class="card-value">{dados['NR_OS']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    
                 with col2:
-                    st.write(f"**Código da Linha:** {dados['COD_LINHA']}")
-                    st.write(f"**Recomendação:** {dados['DESC_RECOMENDACAO']}")
-                    st.write(f"**Lotação:** {dados['DESC_LOTACAO']}")
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Código da Linha:</div>
+                                <div class="card-value">{dados['COD_LINHA']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Recomendação:</div>
+                                <div class="card-value">{dados['DESC_RECOMENDACAO']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Lotação:</div>
+                                <div class="card-value">{dados['DESC_LOTACAO']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
                 with col3:
-                    st.write(f"**Situação:** {dados['DESC_SITUACAO']}")
-                    st.write(f"**Mercadoria:** {dados['DSC_MERCADORIA']}")
-                    st.write(f"**TU:** {dados['TU']}")
-
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Situação:</div>
+                                <div class="card-value">{dados['DESC_SITUACAO']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">Mercadoria:</div>
+                                <div class="card-value">{dados['DSC_MERCADORIA']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    st.markdown(
+                            f"""
+                            <div class="card">
+                                <div class="card-title">TU:</div>
+                                <div class="card-value">{dados['TU']}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
                 st.write("---")
 
         resumo_tela164()

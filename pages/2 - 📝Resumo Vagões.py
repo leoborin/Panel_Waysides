@@ -468,24 +468,24 @@ def exibir_data_mais_recente():
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
     with col1:
-        st.metric("164", str(data_mais_recente_164.date()))
+        st.metric("164", str(data_mais_recente_164.date().strftime("%d-%m-%Y")))
 
     with col2:
-        st.metric("TRKV", str(data_mais_recente_trkv.date()))
+        st.metric("TRKV", str(data_mais_recente_trkv.date().strftime("%d-%m-%Y")))
 
     with col3:
-        st.metric("WCM", str(data_mais_recente_WCM.date()))
+        st.metric("WCM", str(data_mais_recente_WCM.date().strftime("%d-%m-%Y")))
 
     with col4:
-        st.metric("Z369", str(data_mais_recente_z369.date()))
+        st.metric("Z369", str(data_mais_recente_z369.date().strftime("%d-%m-%Y")))
 
     with col5:
-        st.metric("Z851", str(data_mais_recente_z851.date()))
+        st.metric("Z851", str(data_mais_recente_z851.date().strftime("%d-%m-%Y")))
 
     with col6:
-        st.metric("Z1568", str(data_mais_recente_z1568.date()))
+        st.metric("Z1568", str(data_mais_recente_z1568.date().strftime("%d-%m-%Y")))
     with col7:
-        st.metric("TBOGI", str(data_mais_recente_tbogi.date()))
+        st.metric("TBOGI", str(data_mais_recente_tbogi.date().strftime("%d-%m-%Y")))
 
 
 # =============================
@@ -504,7 +504,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
                       (df_trkv["max_valor"].notna())]
 
     df_trkv_filtred = df_trkv[["CarIDInitial",
-                               "CarIDNumber", "timestamp", "max_valor"]]
+                               "CarIDNumber", "timestamp", "max_valor", 'WedgeTypeCode']]
 
     df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["CarIDInitial"].notna()]
     df_trkv_filtred = df_trkv_filtred[df_trkv_filtred["max_valor"].notna()]
@@ -540,7 +540,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
 
     # Filtrar colunas úteis
     df_trkv = df_trkv[["CarIDInitial",
-                       "CarIDNumber", "timestamp", "max_valor"]]
+                       "CarIDNumber", "timestamp", "max_valor",'WedgeTypeCode']]
 
     # Filtrar valores muito altos (ruído claro)
     df_trkv = df_trkv[df_trkv["max_valor"].astype(int) < 68]
@@ -640,6 +640,14 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
         .merge(df_last, on="key", how="left")
     )
 
+    MAP_WEDGE = {
+                2: "Ride Control",
+                3: "Barber",
+                4: "Ride Master",
+                5: "Motion Control",
+            }
+        
+    df_final['WedgeTypeCode'] = df_final['WedgeTypeCode'].map(MAP_WEDGE)
     return df_final
 
 
@@ -729,7 +737,7 @@ def concatenar_dados_new1_wcm_trated(df_new1, wcm_trated):
                on='key', how='left')
     df_final['VAGAO'] = df_final['EQUNR']
     df_final = df_final[["EQUNR", "VAGAO", "MODELO", "STATUS", "DATA_DE_FABRICACAO_trated",  "ULTIMA_RG",
-                         "KM_RODADO_DESDE_ULTIMA_RG", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "TRKV_max_medicao_ultimas_3", "TRKV_ultima_medicao", "TRKV_last_timestamp", "key"]]
+                         "KM_RODADO_DESDE_ULTIMA_RG","WedgeTypeCode", "max_medicao_ultimas_3", "ultima_medicao", "data_ultima_medicao", "TRKV_max_medicao_ultimas_3", "TRKV_ultima_medicao", "TRKV_last_timestamp", "key"]]
 
     df_tratado = df_final.rename(columns={
         'max_medicao_ultimas_3': 'WCM_max_medicao_ultimas_3',
@@ -826,6 +834,7 @@ try:
         "DATA_DE_FABRICACAO_trated",
         "ULTIMA_RG",
         "KM_RODADO_DESDE_ULTIMA_RG",
+        'WedgeTypeCode',
 
         # =============================
         # 🟠 Separador WCM
@@ -855,6 +864,7 @@ try:
         "M7 - Encerramento manutenção preventiva",
         "M8 - Plano do PCM",
         "M9 - Vandalismo",
+        
     ]
 
     df_base_concatenada["Separador_WCM"] = " | "
@@ -969,6 +979,41 @@ try:
     df_filtrado_com_link = df_filtrado.copy()
     df_filtrado_com_link['EQUNR_Link'] = df_filtrado_com_link['EQUNR'].apply(
         create_EQUNR_link)
+    
+    #Tratando Dados
+    colunas_data = [
+                'DATA_DE_FABRICACAO_trated',
+                'ULTIMA_RG',
+                'WCM_last_timestamp',
+                'TRKV_last_timestamp'
+            ]
+    df_filtrado_com_link[colunas_data] = df_filtrado_com_link[colunas_data].apply(
+                lambda x: pd.to_datetime(
+                    x, errors='coerce').dt.strftime('%d-%m-%Y')
+            )
+
+    #Renomeia as colunas
+    df_filtrado_com_link.rename(columns={
+        'VAGAO': 'Vagão',
+        'SERIE': 'Série',
+        'MODELO':'Modelo',
+        'STATUS':'Status',
+        'DATA_DE_FABRICACAO_trated':'Data de Fabricação',
+        'ULTIMA_RG': 'Última RG',
+        'KM_RODADO_DESDE_ULTIMA_RG': 'KM Rodado após RG',
+        'WedgeTypeCode': 'Tipo de Truque',
+        'Separador_WCM':'Separador_WCM',
+        'WCM_max_medicao_ultimas_3':'WCM max média medição',
+        'WCM_ultima_medica': 'WCM Última medição',
+        'WCM_last_timestamp': 'WCM Última data',
+        'Separador_TRKV':'Separador_TRKV',
+        'TRKV_max_medicao_ultimas_3':'TRKV max média medição',
+        'TRKV_ultima_medicao': 'TRKV Última medição',
+        'TRKV_last_timestamp': 'TRKV Última data',
+        'Separador_Status':'Separador_Status'
+        }, inplace=True)
+
+
 
     # Reordena: link primeiro, esconde EQUNR original
     colunas = ['EQUNR_Link'] + [col for col in df_filtrado_com_link.columns if col !=
