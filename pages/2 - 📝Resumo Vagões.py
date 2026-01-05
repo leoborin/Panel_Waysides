@@ -640,14 +640,14 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
         .merge(df_last, on="key", how="left")
     )
 
-    MAP_WEDGE = {
-                2: "Ride Control",
-                3: "Barber",
-                4: "Ride Master",
-                5: "Motion Control",
-            }
+    # MAP_WEDGE = {
+    #             2: "Ride Control",
+    #             3: "Barber",
+    #             4: "Ride Master",
+    #             5: "Motion Control",
+    #         }
         
-    df_final['WedgeTypeCode'] = df_final['WedgeTypeCode'].map(MAP_WEDGE)
+    # df_final['WedgeTypeCode'] = df_final['WedgeTypeCode'].map(MAP_WEDGE)
     return df_final
 
 
