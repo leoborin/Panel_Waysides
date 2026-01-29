@@ -68,6 +68,7 @@ def tratar_outliers_trkv(df):
 
     df["max_valor"] = df[sensores].max(axis=1)
 
+    
     df["min_3"] = (
         df.groupby("key")["max_valor"]
         .rolling(3).min().shift(1)
@@ -916,6 +917,7 @@ if st.button("Executar função"):
         resumo_z1568()
 # -------------------------------------------------------------------RESUMO
 
+
         def resumo_tela164():
 
             dados = df_164.iloc[0]
@@ -1214,6 +1216,9 @@ if st.button("Executar função"):
         from math import sqrt
 
         def projetar_regressao(df, slope, intercept, dias_a_frente=30):
+            #Limpar dados com flag "DESCARTAR"
+            df = df[df['STATUS_out'] != 'DESCARTAR']
+
             # Converte datas para inteiro ordinal
             x = pd.to_datetime(df["Data"], errors="coerce").map(
                 pd.Timestamp.toordinal).values
@@ -1241,6 +1246,9 @@ if st.button("Executar função"):
             # ============================
             # 1) Preparar dados
             # ============================
+            #Apagar dados que estão com a flag "DESCARTAR"
+            df = df[df['STATUS_out'] != 'DESCARTAR']
+            print(df)
             # df = df[df['STATUS_out'] == "OK"]
 
             x_all = pd.to_datetime(df[col_x], errors="coerce").map(
