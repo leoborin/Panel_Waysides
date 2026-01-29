@@ -83,7 +83,8 @@ def tratar_outliers_trkv(df):
     # Regras ±30%
     df["DESCARTAR"] = (
         (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
-        (df["max_valor"] < df["min_3"] * (1-cof_Outlier))
+        (df["max_valor"] < df["min_3"] * (1-cof_Outlier)) |
+       ( df["max_valor"] == 0)
     )
 
     df["STATUS_out"] = df["DESCARTAR"].map(
