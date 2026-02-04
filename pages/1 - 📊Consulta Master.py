@@ -725,6 +725,28 @@ def tratar_entrada(codigo: str) -> str:
     return sem_zeros if sem_zeros else "0"
 
 
+def busca_z851_se_existe(vagao):
+        # Conexão com o MongoDB
+        vagao = int(vagao)
+        client = MongoClient(
+            MONGO_URI_PRD)
+
+        # Definição do filtro
+        filter = {'EQUNR': re.compile(f"{vagao}")}
+
+        # Consulta
+        cursor1 = client[DB_NAME_PRD]['SAP_z851_CadastroVagoes'].find(filter)
+        # Converter o cursor em lista e depois em DataFrame
+        df = pd.DataFrame(list(cursor1))
+        
+        if df.empty:
+            return False
+            st.write("VAZIO")
+        else:
+            return True
+            st.write("tem conteudo")
+        st.write(df.empty)
+
 # functions End ----------------------------------------------------
 # Tela -----------------------
 # Campo de entrada de texto
@@ -737,427 +759,431 @@ if st.button("Executar função"):
 
         vg_entrada = tratar_entrada(vg_entrada)
         minha_funcao(vg_entrada)
+        if not busca_z851_se_existe(vg_entrada):
+            st.header(f"O Vagão {vg_entrada} não consta na base de dados!")
+            st.header("Verifique se foi digitado corretamente!")
+        else:
 
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI, df_censo, df_versonota = busca_dados(
-            vg_entrada)
-        print("df_trkv")
-        # print(df_trkv)
-
-        try:
-            df_trkv = tratar_outliers_trkv(df_trkv)
-            print("df_trkv_outliers")
+            df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_SAT_TAREFAS_full, df_busca_TBOGI, df_censo, df_versonota = busca_dados(
+                vg_entrada)
+            print("df_trkv")
             # print(df_trkv)
-        except Exception as e:
-            print(f"Erro ao tratar outliers df_trkv: {e}")
 
-        # #print(df_trkv.head())
-        df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
-            df_WCM, df_z369, df_trkv, df_busca_TBOGI)
-        print("df_trkv_trated")
-        # print(df_trkv_trated)
+            try:
+                df_trkv = tratar_outliers_trkv(df_trkv)
+                print("df_trkv_outliers")
+                # print(df_trkv)
+            except Exception as e:
+                print(f"Erro ao tratar outliers df_trkv: {e}")
+
+            # #print(df_trkv.head())
+            df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
+                df_WCM, df_z369, df_trkv, df_busca_TBOGI)
+            print("df_trkv_trated")
+            # print(df_trkv_trated)
 
 
-# ===== CSS Google Material =====
+    # ===== CSS Google Material =====
 
 
-        def resumo_z1568():
-            st.markdown("""
-            <style>
+            def resumo_z1568():
+                st.markdown("""
+                <style>
 
-    /* ===== CARD ===== */
-    .card {
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 20px 18px;
-        border: 1px solid #ececec;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        transition: 0.18s ease-in-out;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        min-height: 90px;
+        /* ===== CARD ===== */
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px 18px;
+            border: 1px solid #ececec;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: 0.18s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 90px;
 
-        /* mais espaçamento superior entre as linhas */
-        margin-top: 14px;
-    }
+            /* mais espaçamento superior entre as linhas */
+            margin-top: 14px;
+        }
 
-    .card:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        transform: translateY(-1px);
-    }
+        .card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transform: translateY(-1px);
+        }
 
-    /* ===== TEXTOS ===== */
-    .card-title {
-        font-size: 12.8px;
-        font-weight: 600;
-        color: #6d6d6d;
-        margin-bottom: 6px;
-        letter-spacing: 0.2px;
-    }
+        /* ===== TEXTOS ===== */
+        .card-title {
+            font-size: 12.8px;
+            font-weight: 600;
+            color: #6d6d6d;
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+        }
 
-    .card-value {
-        font-size: 19px;
-        font-weight: 600;
-        color: #1d1d1d;
-        line-height: 1.25;
-        letter-spacing: 0.1px;
-    }
+        .card-value {
+            font-size: 19px;
+            font-weight: 600;
+            color: #1d1d1d;
+            line-height: 1.25;
+            letter-spacing: 0.1px;
+        }
 
-    /* ===== RESPONSIVIDADE ===== */
+        /* ===== RESPONSIVIDADE ===== */
 
-    @media (max-width: 1200px) {
-        .card-value { font-size: 18px; }
-    }
+        @media (max-width: 1200px) {
+            .card-value { font-size: 18px; }
+        }
 
-    @media (max-width: 900px) {
-        .card { padding: 18px; min-height: 80px; }
-        .card-value { font-size: 17px; }
-    }
+        @media (max-width: 900px) {
+            .card { padding: 18px; min-height: 80px; }
+            .card-value { font-size: 17px; }
+        }
 
-    @media (max-width: 600px) {
-        .card { padding: 16px; min-height: 70px; }
-        .card-title { font-size: 12px; }
-        .card-value { font-size: 16px; }
-    }
+        @media (max-width: 600px) {
+            .card { padding: 16px; min-height: 70px; }
+            .card-title { font-size: 12px; }
+            .card-value { font-size: 16px; }
+        }
 
-</style>
+    </style>
 
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-            # ===== Formatando Dados =====
-            df_z851_copia = df_z851.copy()
-            colunas_data = [
-                'DATA_DE_FABRICACAO_trated',
-                'DATA_GARANTIA_trated',
-                'ULTIMA_RG',
-                'ULTIMA_RI',
-                'ULTIMA_RR'
-            ]
-            df_z851_copia['DATA_FIM_trated'] = df_z851_copia['DATA_FIM_trated'].fillna(
-                '-')
-            # Converte e formata todas as colunas para dd-mm-yyyy
-            df_z851_copia[colunas_data] = df_z851_copia[colunas_data].apply(
-                lambda x: pd.to_datetime(
-                    x, errors='coerce').dt.strftime('%d-%m-%Y')
-            )
-            # df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'].astype(int)
+                # ===== Formatando Dados =====
+                df_z851_copia = df_z851.copy()
+                colunas_data = [
+                    'DATA_DE_FABRICACAO_trated',
+                    'DATA_GARANTIA_trated',
+                    'ULTIMA_RG',
+                    'ULTIMA_RI',
+                    'ULTIMA_RR'
+                ]
+                df_z851_copia['DATA_FIM_trated'] = df_z851_copia['DATA_FIM_trated'].fillna(
+                    '-')
+                # Converte e formata todas as colunas para dd-mm-yyyy
+                df_z851_copia[colunas_data] = df_z851_copia[colunas_data].apply(
+                    lambda x: pd.to_datetime(
+                        x, errors='coerce').dt.strftime('%d-%m-%Y')
+                )
+                # df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'].astype(int)
 
-            df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = (
-                df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG']
-                .round()                # arredonda
-                .astype(int)            # converte para int
-                .apply(lambda x: f"{x:,}".replace(",", ".")))
+                df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG'] = (
+                    df_z851_copia['KM_RODADO_DESDE_ULTIMA_RG']
+                    .round()                # arredonda
+                    .astype(int)            # converte para int
+                    .apply(lambda x: f"{x:,}".replace(",", ".")))
 
-            df_z851_copia.rename(columns={
-                'EQUNR': 'Ativo',
-                'DATA_DE_FABRICACAO_trated': 'Data de Fabricação',
-                'DATA_FIM_trated': 'Data de Desativação',
-                'DATA_GARANTIA_trated': 'Data de Garantia do Ativo',
-                'ULTIMA_RG': 'Última RG',
-                'ULTIMA_RI': 'Última RI',
-                'ULTIMA_RR': 'Última RR',
-                'KM_RODADO_DESDE_ULTIMA_RG': 'KM Rodado desde última RG',
-                'BITOLA': 'Bitola',
-                'MALHA': 'Malha',
-                'MODELO': 'Modelo',
-                'STATUS': 'Status'
-            }, inplace=True)
+                df_z851_copia.rename(columns={
+                    'EQUNR': 'Ativo',
+                    'DATA_DE_FABRICACAO_trated': 'Data de Fabricação',
+                    'DATA_FIM_trated': 'Data de Desativação',
+                    'DATA_GARANTIA_trated': 'Data de Garantia do Ativo',
+                    'ULTIMA_RG': 'Última RG',
+                    'ULTIMA_RI': 'Última RI',
+                    'ULTIMA_RR': 'Última RR',
+                    'KM_RODADO_DESDE_ULTIMA_RG': 'KM Rodado desde última RG',
+                    'BITOLA': 'Bitola',
+                    'MALHA': 'Malha',
+                    'MODELO': 'Modelo',
+                    'STATUS': 'Status'
+                }, inplace=True)
 
-            m_bitola = {'L': 'Larga', 'M': 'Métrica'}
-            m_malha = {'N': 'Norte', 'S': 'Sul'}
-            m_status = {'1': 'Disponível', '2': 'Retido',
-                        '3': 'Indisponível ou Eliminado'}
-            m_data_desativacao = {'None': '-'}
+                m_bitola = {'L': 'Larga', 'M': 'Métrica'}
+                m_malha = {'N': 'Norte', 'S': 'Sul'}
+                m_status = {'1': 'Disponível', '2': 'Retido',
+                            '3': 'Indisponível ou Eliminado'}
+                m_data_desativacao = {'None': '-'}
 
-            df_z851_copia.replace({
-                'Bitola': m_bitola,
-                'Malha':  m_malha,
-                'Status': m_status,
-                'DATA_FIM_trated': m_data_desativacao
-            }, inplace=True)
+                df_z851_copia.replace({
+                    'Bitola': m_bitola,
+                    'Malha':  m_malha,
+                    'Status': m_status,
+                    'DATA_FIM_trated': m_data_desativacao
+                }, inplace=True)
 
-            row = df_z851_copia.iloc[0]
-            campos = [
-                'Ativo',
-                'Bitola',
-                'Malha',
-                'Data de Fabricação',
-                'Data de Desativação',
-                'Data de Garantia do Ativo',
-                'KM Rodado desde última RG',
-                'Modelo',
-                'Status',
-                'Última RG',
-                'Última RI',
-                'Última RR'
-            ]
+                row = df_z851_copia.iloc[0]
+                campos = [
+                    'Ativo',
+                    'Bitola',
+                    'Malha',
+                    'Data de Fabricação',
+                    'Data de Desativação',
+                    'Data de Garantia do Ativo',
+                    'KM Rodado desde última RG',
+                    'Modelo',
+                    'Status',
+                    'Última RG',
+                    'Última RI',
+                    'Última RR'
+                ]
 
-            st.subheader("📌 Informações do Vagão")
+                st.subheader("📌 Informações do Vagão")
 
-            cards_por_linha = 3
+                cards_por_linha = 3
 
-            # ===== Renderização =====
-            for i in range(0, len(campos), cards_por_linha):
-                cols = st.columns(cards_por_linha)
+                # ===== Renderização =====
+                for i in range(0, len(campos), cards_por_linha):
+                    cols = st.columns(cards_por_linha)
 
-                for idx, campo in enumerate(campos[i:i + cards_por_linha]):
-                    valor = row[campo]
+                    for idx, campo in enumerate(campos[i:i + cards_por_linha]):
+                        valor = row[campo]
 
-                    with cols[idx]:
+                        with cols[idx]:
+                            st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">{campo}</div>
+                                    <div class="card-value">{valor}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+            resumo_z1568()
+    # -------------------------------------------------------------------RESUMO
+
+
+            def resumo_tela164():
+
+                dados = df_164.iloc[0]
+                with st.container():
+                    st.write("---")
+                    st.markdown(f"### Dados atuais do vagão")
+                    dados['DT_CARGA'] = pd.to_datetime(dados['DT_CARGA']).strftime("%d-%m-%Y-%H:%M:%S")
+                    st.write(f"**Data Atualização:** {dados['DT_CARGA']}")
+                    dados = dados.astype('string').fillna('-')
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+
+                        # st.write(f"**Vagão:** {dados['vagão']}")
                         st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">{campo}</div>
-                                <div class="card-value">{valor}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Local:</div>
+                                    <div class="card-value">{dados['LOCAL']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Trem:</div>
+                                    <div class="card-value">{dados['TREM']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">OS:</div>
+                                    <div class="card-value">{dados['NR_OS']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        
+                    with col2:
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Código da Linha:</div>
+                                    <div class="card-value">{dados['COD_LINHA']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Recomendação:</div>
+                                    <div class="card-value">{dados['DESC_RECOMENDACAO']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Lotação:</div>
+                                    <div class="card-value">{dados['DESC_LOTACAO']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
 
-        resumo_z1568()
-# -------------------------------------------------------------------RESUMO
+                    with col3:
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Situação:</div>
+                                    <div class="card-value">{dados['DESC_SITUACAO']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">Mercadoria:</div>
+                                    <div class="card-value">{dados['DSC_MERCADORIA']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        st.markdown(
+                                f"""
+                                <div class="card">
+                                    <div class="card-title">TU:</div>
+                                    <div class="card-value">{dados['TU']}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                    st.write("---")
 
+            resumo_tela164()
 
-        def resumo_tela164():
+            def plotar_gaph_resumo():
+                import plotly.express as px
+                import pandas as pd
+                import streamlit as st
 
-            dados = df_164.iloc[0]
-            with st.container():
-                st.write("---")
-                st.markdown(f"### Dados atuais do vagão")
-                dados['DT_CARGA'] = pd.to_datetime(dados['DT_CARGA']).strftime("%d-%m-%Y-%H:%M:%S")
-                st.write(f"**Data Atualização:** {dados['DT_CARGA']}")
-                dados = dados.astype('string').fillna('-')
-                col1, col2, col3 = st.columns(3)
+                st.subheader("Linha do Tempo")
 
-                with col1:
+                try:
+                    df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
+                except Exception as e:
+                    print(f"Erro : {e}")
+                    df_wcm_timeline = pd.DataFrame()
 
-                    # st.write(f"**Vagão:** {dados['vagão']}")
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Local:</div>
-                                <div class="card-value">{dados['LOCAL']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Trem:</div>
-                                <div class="card-value">{dados['TREM']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">OS:</div>
-                                <div class="card-value">{dados['NR_OS']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    
-                with col2:
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Código da Linha:</div>
-                                <div class="card-value">{dados['COD_LINHA']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Recomendação:</div>
-                                <div class="card-value">{dados['DESC_RECOMENDACAO']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Lotação:</div>
-                                <div class="card-value">{dados['DESC_LOTACAO']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
+                try:
+                    df_trkv_timeline = inserir_trkv_hist(df_trkv_trated)
+                except Exception as e:
+                    print(f"Erro : {e}")
+                    df_trkv_timeline = pd.DataFrame()
 
-                with col3:
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Situação:</div>
-                                <div class="card-value">{dados['DESC_SITUACAO']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">Mercadoria:</div>
-                                <div class="card-value">{dados['DSC_MERCADORIA']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    st.markdown(
-                            f"""
-                            <div class="card">
-                                <div class="card-title">TU:</div>
-                                <div class="card-value">{dados['TU']}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                st.write("---")
+                try:
+                    df_z1568_timeline = inserir_z1568(
+                        df_z1568).reset_index(drop=True)
+                except Exception as e:
+                    print(f"Erro : {e}")
+                    df_z1568_timeline = pd.DataFrame()
 
-        resumo_tela164()
+                try:
+                    df_TBOGI_timeline = inserir_TBOGI_hist(df_TBOGI_trated)
+                except Exception as e:
+                    print(f"Erro : {e}")
+                    df_TBOGI_timeline = pd.DataFrame()
 
-        def plotar_gaph_resumo():
-            import plotly.express as px
-            import pandas as pd
-            import streamlit as st
+                # #print(df_z1568_timeline)
 
-            st.subheader("Linha do Tempo")
+                print("validation")
 
-            try:
-                df_wcm_timeline = inserir_wcm_hist(df_wcm_trated)
-            except Exception as e:
-                print(f"Erro : {e}")
-                df_wcm_timeline = pd.DataFrame()
+                df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,
+                                    df_trkv_timeline, df_TBOGI_timeline], ignore_index=True)
+                # #print(df_final)
 
-            try:
-                df_trkv_timeline = inserir_trkv_hist(df_trkv_trated)
-            except Exception as e:
-                print(f"Erro : {e}")
-                df_trkv_timeline = pd.DataFrame()
+                df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
+                    lambda x: "" if x in ["WCM", "trkv", "TBOGI"] else x
+                )
 
-            try:
-                df_z1568_timeline = inserir_z1568(
-                    df_z1568).reset_index(drop=True)
-            except Exception as e:
-                print(f"Erro : {e}")
-                df_z1568_timeline = pd.DataFrame()
+                df = df_final  # ajustarr
+                mapa_traducao = {
+                    "M1": "Nota monitorada",
+                    "M2": "Nota crítica",
+                    "M3": "Nota de retenção",
+                    "M4": "Nota da Engenharia",
+                    "M5": "Encerramento manutenção corretiva",
+                    "M6": "Vagão acidentado/descarrilado",
+                    "M7": "Encerramento manutenção preventiva",
+                    "M8": "Plano do PCM",
+                    "M9": "Vandalismo",
+                    "trkv": "Passagem no TruckView",
+                    "wcm": "Passagem no Impacto de Rodas",
+                    "MC": "Manutenção Corretiva",
+                    "RG": "Revisão Geral",
+                    "RA": "Revisão Anual"
 
-            try:
-                df_TBOGI_timeline = inserir_TBOGI_hist(df_TBOGI_trated)
-            except Exception as e:
-                print(f"Erro : {e}")
-                df_TBOGI_timeline = pd.DataFrame()
+                }
 
-            # #print(df_z1568_timeline)
+                df["Tipo_Evento_Traduzido"] = df["Tipo_Evento"].map(
+                    mapa_traducao)
 
-            print("validation")
+                # st.dataframe(df)
+                # Converte datas
+                # Converte datas
+                df["INICIO"] = pd.to_datetime(
+                    df["INICIO"], format="%Y-%m-%d %H:%M")
+                df["FIM"] = pd.to_datetime(df["FIM"], format="%Y-%m-%d %H:%M")
 
-            df_final = pd.concat([df_z1568_timeline, df_timeline_z369, df_wcm_timeline,
-                                 df_trkv_timeline, df_TBOGI_timeline], ignore_index=True)
-            # #print(df_final)
+                df["INICIO_"] = df["INICIO"].dt.strftime("%d/%m/%Y")
+                df["FIM_"] = df["FIM"].dt.strftime("%d/%m/%Y")
 
-            df_final["Texto_Label"] = df_final["Tipo_Evento"].apply(
-                lambda x: "" if x in ["WCM", "trkv", "TBOGI"] else x
-            )
+                df["Fim_Aux"] = df["FIM"].fillna(pd.Timestamp.now())
 
-            df = df_final  # ajustarr
-            mapa_traducao = {
-                "M1": "Nota monitorada",
-                "M2": "Nota crítica",
-                "M3": "Nota de retenção",
-                "M4": "Nota da Engenharia",
-                "M5": "Encerramento manutenção corretiva",
-                "M6": "Vagão acidentado/descarrilado",
-                "M7": "Encerramento manutenção preventiva",
-                "M8": "Plano do PCM",
-                "M9": "Vandalismo",
-                "trkv": "Passagem no TruckView",
-                "wcm": "Passagem no Impacto de Rodas",
-                "MC": "Manutenção Corretiva",
-                "RG": "Revisão Geral",
-                "RA": "Revisão Anual"
+                # ORDEM ALFABÉTICA DA LEGENDA
+                ordem_legenda = sorted(df["Tipo_Evento"].unique())
 
-            }
+                # CORES FIXAS
+                cores_eventos = {
+                    "M1": "#faf74f",
+                    "M2": "#d62728",
+                    "M3": "#cf8517",
+                    "M4": "#67a5bd",
+                    "M5": "#6aa02c",
+                    "M6": "#75140d",
+                    "M7": "#2ca02c",
+                    "M8": "#0e9fff",
+                    "M9": "#7f7f7f",
+                    "trkv": "#c660f5",
+                    "wcm": "#ff57f1",
+                    "MC": "#4b8d00",
+                    "RG": "#2ca02c",
+                    "RA": "#2ca02c"
+                }
 
-            df["Tipo_Evento_Traduzido"] = df["Tipo_Evento"].map(
-                mapa_traducao)
+                fig = px.timeline(
+                    df,
+                    x_start="INICIO",
+                    x_end="Fim_Aux",
+                    y="Evento",
+                    color="Tipo_Evento",
+                    text="Texto_Label",
+                    hover_data={
+                        "Fim_Aux": False,
+                        "INICIO_": True,
+                        "FIM_": True,
+                        "Tipo_Evento": True,
+                        "Tipo_Evento_Traduzido": True,
+                        "Texto_Completo": True
+                    },
+                    category_orders={"Tipo_Evento": ordem_legenda},
+                    color_discrete_map=cores_eventos
+                )
 
-            # st.dataframe(df)
-            # Converte datas
-            # Converte datas
-            df["INICIO"] = pd.to_datetime(
-                df["INICIO"], format="%Y-%m-%d %H:%M")
-            df["FIM"] = pd.to_datetime(df["FIM"], format="%Y-%m-%d %H:%M")
+                # Aumentar altura da barra
+                fig.update_traces(
+                    width=1,              # AUMENTA altura da barra
+                    textfont_size=25,
+                    textangle=0,
+                    # textposition="inside",
+                    # insidetextanchor="middle",
+                    cliponaxis=True
+                )
 
-            df["INICIO_"] = df["INICIO"].dt.strftime("%d/%m/%Y")
-            df["FIM_"] = df["FIM"].dt.strftime("%d/%m/%Y")
+                fig.update_yaxes(autorange="reversed")
+                fig.update_layout(
+                    # legenda horizontal abaixo do gráfico
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+                )
 
-            df["Fim_Aux"] = df["FIM"].fillna(pd.Timestamp.now())
+                st.plotly_chart(fig, width="stretch")
 
-            # ORDEM ALFABÉTICA DA LEGENDA
-            ordem_legenda = sorted(df["Tipo_Evento"].unique())
-
-            # CORES FIXAS
-            cores_eventos = {
-                "M1": "#faf74f",
-                "M2": "#d62728",
-                "M3": "#cf8517",
-                "M4": "#67a5bd",
-                "M5": "#6aa02c",
-                "M6": "#75140d",
-                "M7": "#2ca02c",
-                "M8": "#0e9fff",
-                "M9": "#7f7f7f",
-                "trkv": "#c660f5",
-                "wcm": "#ff57f1",
-                "MC": "#4b8d00",
-                "RG": "#2ca02c",
-                "RA": "#2ca02c"
-            }
-
-            fig = px.timeline(
-                df,
-                x_start="INICIO",
-                x_end="Fim_Aux",
-                y="Evento",
-                color="Tipo_Evento",
-                text="Texto_Label",
-                hover_data={
-                    "Fim_Aux": False,
-                    "INICIO_": True,
-                    "FIM_": True,
-                    "Tipo_Evento": True,
-                    "Tipo_Evento_Traduzido": True,
-                    "Texto_Completo": True
-                },
-                category_orders={"Tipo_Evento": ordem_legenda},
-                color_discrete_map=cores_eventos
-            )
-
-            # Aumentar altura da barra
-            fig.update_traces(
-                width=1,              # AUMENTA altura da barra
-                textfont_size=25,
-                textangle=0,
-                # textposition="inside",
-                # insidetextanchor="middle",
-                cliponaxis=True
-            )
-
-            fig.update_yaxes(autorange="reversed")
-            fig.update_layout(
-                # legenda horizontal abaixo do gráfico
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-            )
-
-            st.plotly_chart(fig, width="stretch")
-
-        plotar_gaph_resumo()
+            plotar_gaph_resumo()
 # -------------------------------------------------------------------RESUMO
 
 # graficos WCM e TRKV
@@ -1208,902 +1234,903 @@ if st.button("Executar função"):
 
     # print(f"Coeficiente angular (slope): {slope:.4f}")
 
-    print("validation2")
-    # #print(df_trkv_trated)
-    try:
-        import numpy as np
-        import pandas as pd
-        from math import sqrt
-
-        def projetar_regressao(df, slope, intercept, dias_a_frente=30):
-            #Limpar dados com flag "DESCARTAR"
-            df = df[df['STATUS_out'] != 'DESCARTAR']
-
-            # Converte datas para inteiro ordinal
-            x = pd.to_datetime(df["Data"], errors="coerce").map(
-                pd.Timestamp.toordinal).values
-            x = x[~np.isnan(x)]  # remove valores inválidos
-
-            ultimo_x = x[-1]
-
-            # Cria novos pontos no futuro
-            novos_x = np.array(
-                [ultimo_x + i for i in range(1, dias_a_frente + 1)])
-
-            # Converte de volta para datas
-            novas_datas = [pd.Timestamp.fromordinal(int(v)) for v in novos_x]
-
-            # Predição futura
-            novos_y_pred = slope * novos_x + intercept
-
-            # Retorna um dataframe organizado
-            return pd.DataFrame({
-                "Data": novas_datas,
-                "y_pred": novos_y_pred
-            })
-
-        def regressao_linear_manual(df, col_x="Data", col_y="TRKV_MAX_Cunha"):
-            # ============================
-            # 1) Preparar dados
-            # ============================
-            #Apagar dados que estão com a flag "DESCARTAR"
-            df = df[df['STATUS_out'] != 'DESCARTAR']
-            print(df)
-            # df = df[df['STATUS_out'] == "OK"]
-
-            x_all = pd.to_datetime(df[col_x], errors="coerce").map(
-                pd.Timestamp.toordinal).values
-            y_all = df[col_y].values
-
-            # Máscara para limpar NaN
-            mask = ~np.isnan(x_all) & ~np.isnan(y_all)
-            x = x_all[mask]
-            y = y_all[mask]
-
-            n = len(x)
-
-            # ============================
-            # 2) Somatórios
-            # ============================
-            sum_x = np.sum(x)
-            sum_y = np.sum(y)
-            sum_xy = np.sum(x * y)
-            sum_x2 = np.sum(x * x)
-
-            # ============================
-            # 3) Cálculo dos parâmetros
-            # ============================
-            slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
-            intercept = (sum_y - slope * sum_x) / n
-
-            # ============================
-            # 4) Predições
-            # ============================
-            # y_pred → somente dados válidos (para cálculo das métricas)
-            y_pred = slope * x + intercept
-
-            # y_pred_full → predição para TODAS as linhas originais
-            y_pred_full = slope * x_all + intercept
-
-            # ============================
-            # 5) Métricas
-            # ============================
-            rmse = sqrt(np.mean((y - y_pred)**2))
-            mae = np.mean(np.abs(y - y_pred))
-            ss_res = np.sum((y - y_pred)**2)
-            ss_tot = np.sum((y - np.mean(y))**2)
-            r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0
-
-            # ============================
-            # 6) Retorno
-            # ============================
-            return {
-                "slope": slope,
-                "intercept": intercept,
-                "rmse": rmse,
-                "mae": mae,
-                "r2": r2,
-                "y_pred": y_pred,            # somente dados válidos
-                "y_pred_full": y_pred_full   # TODAS as linhas (para plot)
-            }
-
-        resultado = regressao_linear_manual(df_trkv_trated)
-
-        slope = resultado["slope"]
-        intercept = resultado["intercept"]
-        r2 = resultado["r2"]
-        rmse = resultado["rmse"]
-        mae = resultado["mae"]
-        y_pred = resultado["y_pred_full"]
-
-        df_projecao = projetar_regressao(
-            df_trkv_trated, slope, intercept, dias_a_frente=30)
-
-        print(f"Slope: {slope}")
-        print(f"Intercept: {intercept}")
-        print(f"R²: {r2}")
-        print(f"RMSE: {rmse}")
-        print(f"MAE: {mae}")
-
-    except Exception as e:
-        print(f"Erro na regressão: {e}")
-        slope = 0
-        intercept = 0
-        r2 = 0
-        rmse = 0
-        mae = 0
-        y_pred = 0
-
-
-# -------------------------------------------------------------------Regressão
-
-
-    def plot_Waysides():
-        try:
-            fig_trkv = go.Figure()
-
-            # -------------------------
-            # 1. Série real
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_trkv_trated["Data"],
-                y=df_trkv_trated["TRKV_MAX_Cunha"],
-                mode="lines+markers+text",
-                text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
-                textposition="top center",
-                name="TRKV_MAX_Cunha",
-                marker=dict(size=7),
-                line=dict(width=2)
-            ))
-
-            # -------------------------
-            # 2. Linha de regressão real
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_trkv_trated["Data"],
-                y=y_pred,
-                mode="lines",
-                line=dict(width=2, dash="dash", color="#A52BE3"),
-                name=f"Regressão Linear (slope={slope:.4f})"
-            ))
-
-            # -------------------------
-            # 3. PROJEÇÃO FUTURA
-            # -------------------------
-            fig_trkv.add_trace(go.Scatter(
-                x=df_projecao["Data"],
-                y=df_projecao["y_pred"],
-                mode="lines",
-                line=dict(width=2, dash="dot", color="#5A5555"),
-                name="Projeção Futura (+30 dias)"
-            ))
-
-            # -------------------------
-            # 4. Alarme MAX
-            # -------------------------
-            MAP_WEDGE = {
-                2: 45,
-                3: 57,
-                4: 64,
-                5: 57,
-            }
-
-            code = df_trkv["WedgeTypeCode"].iloc[0]
-
-            # trata NaN e 0 como inválido
-            if pd.isna(code) or code == 0:
-                label = "inválido"
-            else:
-                label = MAP_WEDGE.get(int(code), "inválido")
-
-            df_trkv_trated['Alarme'] = label
-            fig_trkv.add_trace(go.Scatter(
-                x=df_trkv_trated["Data"],
-                y=df_trkv_trated['Alarme'],
-                mode="lines",
-                line=dict(color="red", width=2, dash="dash"),
-                name=f"Alarme em {label}"
-            ))
-            # Layout
-            fig_trkv.update_layout(
-                title="TRKV - Regressão + Projeção Futura",
-                xaxis_title="Data",
-                yaxis_title="Valor",
-                template="plotly_white",
-                height=380,
-            )
-
-            # Range eixo Y
-            fig_trkv.update_yaxes(range=[10, 90])
-        except Exception as e:
-            print(f"Erro ao plotar gráfico TRKV: {e}")
-            fig_trkv = go.Figure()
-
-        # =========================
-        # WCM
-        # =========================
-        try:
-            df_wcm_trated["Alarme"] = 210
-
-            fig_wcm = go.Figure()
-
-            # Curva principal
-            fig_wcm.add_trace(go.Scatter(
-                x=df_wcm_trated["Data"],
-                y=df_wcm_trated["Maior_Impacto_kN"],
-                mode="lines+markers+text",
-                text=df_wcm_trated["Maior_Impacto_kN"].round(
-                    1).astype(str),
-                textposition="top center",
-                name="Maior_Impacto_kN",
-                marker=dict(size=7),
-                line=dict(width=2)
-            ))
-
-            # Linha de limite
-            fig_wcm.add_trace(go.Scatter(
-                x=df_wcm_trated["Data"],
-                y=df_wcm_trated["Alarme"],
-                mode="lines",
-                name="Alarme 200 kN",
-                line=dict(color="red", width=2, dash="dash")
-            ))
-
-            fig_wcm.update_layout(
-                title="wcm",
-                xaxis_title="Data",
-                yaxis_title="Valor",
-                template="plotly_white",
-                height=380
-            )
-
-            fig_wcm.update_yaxes(range=[0, 300])
-        except Exception as e:
-            print(f"Erro ao plotar gráfico WCM: {e}")
-            fig_wcm = go.Figure()
-
-        # =========================
-        # TBOGI
-        # =========================
-        try:
-            df_TBOGI_trated["Alarme"] = 15
-            df_TBOGI_trated.rename(
-                columns={"timestamp_received": "Data"}, inplace=True)
-
-            fig_TBOGI = go.Figure()
-
-            # Curva principal
-            fig_TBOGI.add_trace(go.Scatter(
-                x=df_TBOGI_trated["Data"],
-                y=df_TBOGI_trated["max_valor_mod_pd"],
-                mode="lines+markers+text",
-                text=df_TBOGI_trated["max_valor_mod_pd"].round(
-                    1).astype(str),
-                textposition="top center",
-                name="max_valor_mod_pd",
-                marker=dict(size=7),
-                line=dict(width=2)
-            ))
-
-            # Linha de limite
-            fig_TBOGI.add_trace(go.Scatter(
-                x=df_TBOGI_trated["Data"],
-                y=df_TBOGI_trated["Alarme"],
-                mode="lines",
-                name="Alarme 10 ",
-                line=dict(color="red", width=2, dash="dash")
-            ))
-
-            fig_TBOGI.update_layout(
-                title="TBOGI",
-                xaxis_title="Data",
-                yaxis_title="Valor",
-                template="plotly_white",
-                height=380
-            )
-
-            fig_TBOGI.update_yaxes(range=[0, 30])
-        except Exception as e:
-            print(f"Erro ao plotar gráfico TBOGI: {e}")
-            fig_TBOGI = go.Figure()
-        # =========================
-        # STREAMLIT LAYOUT
-        # =========================
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("TRKV Cunha Máximo Passagem (mm)")
-            MAP_WEDGE = {
-                2: "Ride Control",
-                3: "Barber",
-                4: "Ride Master",
-                5: "Motion Control",
-            }
-
-            code = df_trkv["WedgeTypeCode"].iloc[0]
-
-            # trata NaN e 0 como inválido
-            if pd.isna(code) or code == 0:
-                label = "inválido"
-            else:
-                # int() se o dtype vier float
-                label = MAP_WEDGE.get(int(code), "inválido")
-
-            st.markdown(f'Tipo de Truque:  **{label}**')
-            fig_trkv.update_layout(
-                # legenda horizontal abaixo do gráfico
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-            )
-            st.plotly_chart(fig_trkv, width="stretch",
-                            key="plot_trkv")
-            # st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
-            st.markdown(f"""
-            **R²:** `{r2:.4f}`
-            **MAE:** `{mae:.4f}`
-            **RMSE:** `{rmse:.4f}`
-            """)
-            st.dataframe(df_trkv_trated.sort_values(
-                by="Data", ascending=False).reset_index(drop=True))
-
-        with col2:
-            st.subheader("WCM Maior Impacto (kN)")
-            fig_wcm.update_layout(
-                # legenda horizontal abaixo do gráfico
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-            )
-            st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
-            st.markdown(f"""
-            **Alarme Baixo:** `-`
-            **Alarme Médio:** `-`
-            **Alarme Alto:** `-`
-            """)
-            st.dataframe(df_wcm_trated.sort_values(
-                by="Data", ascending=False).reset_index(drop=True))
-
-        col2_1, col2_2 = st.columns(2)
-
-        with col2_1:
-            st.subheader("TBOGI Módulo Max ()")
-            fig_TBOGI.update_layout(
-                # legenda horizontal abaixo do gráfico
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-            )
-            st.plotly_chart(
-                fig_TBOGI, width="stretch", key="plot_tbogi")
-            st.dataframe(df_TBOGI_trated.sort_values(
-                by="Data", ascending=False).reset_index(drop=True))
-
-        with col2_2:
-            st.subheader("Detector Acústico")
-            # st.plotly_chart(fig_detector, use_container_width=True, key="plot_detector")
-
-            # Plota gráfico de linha
-# graficos WCM e TRKV
-    try:
-        plot_Waysides()
-    except Exception as e:
-        print(f"Erro ao plotar gráficos Waysides: {e}")
-
-    st.write("---")
-# ------------------------
-    if not df_SAT_TAREFAS_full.empty:
-        df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
-            'NUMDOC', 'DH_CRIACAO', 'DHFIM', 'DESCRICAO_TAREFA', 'Status', 'DESCRICAO_ECP', 'Sistema', 'OBS_ATUAL']]
-
-    def plotar_TELA_SAT(df_SAT_TAREFAS_full):
-
-        import streamlit as st
-        import streamlit.components.v1 as components
-        import pandas as pd
-        import json
-
-        # st.write("---")
-        st.markdown(f"### Tarefas Realizadas em Manutenção")
-
-        # Converter DataFrame para lista de dicionários
-        dados = df_SAT_TAREFAS_full.to_dict(orient="records")
-
-        # Converter Timestamp para string
-        for row in dados:
-            for k, v in row.items():
-
-                # Tratamento para Timestamps
-                if isinstance(v, pd.Timestamp):
-                    row[k] = "" if pd.isna(v) else v.strftime(
-                        "%Y-%m-%d %H:%M:%S")
-
-                # NaT explícito
-                elif v is pd.NaT:
-                    row[k] = ""
-
-                # NaN numérico (float("nan"))
-                elif isinstance(v, float) and np.isnan(v):
-                    row[k] = ""
-
-                # None
-                elif v is None:
-                    row[k] = ""
-
-        html_code = f"""
-        <html>
-        <head>
-        <meta charset="UTF-8">
-
-        <style>
-
-            #root, .block-container, .main {{
-                padding: 0 !important;
-                margin: 0 !important;
-            }}
-            .block-container {{
-                max-width: 100% !important;
-            }}
-
-            /* Remover padding lateral do Streamlit */
-            .main .block-container {{
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-            }}
-
-            /* Container em largura total */
-            .container {{
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 20px !important;
-            }}
-
-            body {{
-                font-family: 'Segoe UI', Arial, sans-serif;
-                background-color: #ffffff;
-            }}
-
-            /* SEARCH BOX FIXA */
-            .search-box {{
-                margin: 0 0 15px 0;
-                display: flex;
-                border: 1px solid #ddd;
-                padding: 12px 18px;
-                border-radius: 25px;
-                background: #ffffff !important;
-                box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
-
-                position: sticky;
-                top: 0;
-                z-index: 20;
-            }}
-
-            .search-input {{
-                border: none;
-                background: none;
-                width: 100%;
-                outline: none;
-                font-size: 16px;
-            }}
-
-            /* TABELA ESTILO NOTION + GOOGLE */
-            table {{
-                width: 100%;
-                border-collapse: separate;
-                border-spacing: 0 4px;
-                font-size: 14px;
-            }}
-
-            thead tr {{
-                background: #f3f3f3;
-                border-radius: 6px;
-
-                position: sticky;
-                top: 60px; /* Alinhar com search-box */
-                z-index: 10;
-            }}
-
-            th {{
-                text-align: left;
-                padding: 10px 12px;
-                font-weight: 600;
-                color: #333;
-                border-bottom: 1px solid #e5e5e5;
-            }}
-
-            tbody tr {{
-                background: #fff;
-                transition: 0.15s ease-in-out;
-            }}
-
-            tbody tr:hover {{
-                background: #f7faff;
-                box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
-            }}
-
-            td {{
-                padding: 10px 12px;
-                color: #333;
-                border-bottom: 1px solid #f1f1f1;
-                text-align: left;
-            }}
-
-            tbody tr:nth-child(even) {{
-                background: #fafafa;
-            }}
-
-            .info-linhas {{
-                font-size: 12px;
-                color: #666;
-                margin-top: 5px;
-            }}
-
-        </style>
-
-        </head>
-
-        <body>
-
-        <div class="container">
-
-            <div class="search-box">
-                <input class="search-input" id="searchInput" placeholder="Pesquisar por DESCRICAO_TAREFA..." />
-            </div>
-
-            <div class="info-linhas" id="infoLinhas"></div>
-
-            <table>
-                <thead>
-                    <tr id="headerRow"></tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-
-        </div>
-
-        <script>
-
-            const dados = {json.dumps(dados, ensure_ascii=False)};
-            const colunas = dados.length > 0 ? Object.keys(dados[0]) : [];
-
-            // Montar cabeçalho
-            function renderHeader() {{
-                const headerRow = document.getElementById("headerRow");
-                headerRow.innerHTML = "";
-                colunas.forEach(col => {{
-                    const th = document.createElement("th");
-                    th.textContent = col;
-                    headerRow.appendChild(th);
-                }});
-            }}
-
-            // Montar tabela
-            function renderTabela(linhas) {{
-                const tbody = document.getElementById("tableBody");
-                const info = document.getElementById("infoLinhas");
-                tbody.innerHTML = "";
-
-                linhas.forEach(row => {{
-                    const tr = document.createElement("tr");
-                    colunas.forEach(col => {{
-                        const td = document.createElement("td");
-                        td.textContent = row[col] ?? "";
-                        tr.appendChild(td);
+            print("validation2")
+            # #print(df_trkv_trated)
+            try:
+                import numpy as np
+                import pandas as pd
+                from math import sqrt
+
+                def projetar_regressao(df, slope, intercept, dias_a_frente=30):
+                    #Limpar dados com flag "DESCARTAR"
+                    df = df[df['STATUS_out'] != 'DESCARTAR']
+
+                    # Converte datas para inteiro ordinal
+                    x = pd.to_datetime(df["Data"], errors="coerce").map(
+                        pd.Timestamp.toordinal).values
+                    x = x[~np.isnan(x)]  # remove valores inválidos
+
+                    ultimo_x = x[-1]
+
+                    # Cria novos pontos no futuro
+                    novos_x = np.array(
+                        [ultimo_x + i for i in range(1, dias_a_frente + 1)])
+                    
+                    print(novos_x)
+                    # Converte de volta para datas
+                    novas_datas = [pd.Timestamp.fromordinal(int(v)) for v in novos_x]
+
+                    # Predição futura
+                    novos_y_pred = slope * novos_x + intercept
+
+                    # Retorna um dataframe organizado
+                    return pd.DataFrame({
+                        "Data": novas_datas,
+                        "y_pred": novos_y_pred
+                    })
+
+                def regressao_linear_manual(df, col_x="Data", col_y="TRKV_MAX_Cunha"):
+                    # ============================
+                    # 1) Preparar dados
+                    # ============================
+                    #Apagar dados que estão com a flag "DESCARTAR"
+                    df = df[df['STATUS_out'] != 'DESCARTAR']
+                    
+                    # df = df[df['STATUS_out'] == "OK"]
+
+                    x_all = pd.to_datetime(df[col_x], errors="coerce").map(
+                        pd.Timestamp.toordinal).values
+                    y_all = df[col_y].values
+
+                    # Máscara para limpar NaN
+                    mask = ~np.isnan(x_all) & ~np.isnan(y_all)
+                    x = x_all[mask]
+                    y = y_all[mask]
+
+                    n = len(x)
+                    print(df)
+                    # ============================
+                    # 2) Somatórios
+                    # ============================
+                    sum_x = np.sum(x)
+                    sum_y = np.sum(y)
+                    sum_xy = np.sum(x * y)
+                    sum_x2 = np.sum(x * x)
+
+                    # ============================
+                    # 3) Cálculo dos parâmetros
+                    # ============================
+                    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
+                    intercept = (sum_y - slope * sum_x) / n
+
+                    # ============================
+                    # 4) Predições
+                    # ============================
+                    # y_pred → somente dados válidos (para cálculo das métricas)
+                    y_pred = slope * x + intercept
+
+                    # y_pred_full → predição para TODAS as linhas originais
+                    y_pred_full = slope * x_all + intercept
+
+                    # ============================
+                    # 5) Métricas
+                    # ============================
+                    rmse = sqrt(np.mean((y - y_pred)**2))
+                    mae = np.mean(np.abs(y - y_pred))
+                    ss_res = np.sum((y - y_pred)**2)
+                    ss_tot = np.sum((y - np.mean(y))**2)
+                    r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0
+
+                    # ============================
+                    # 6) Retorno
+                    # ============================
+                    return {
+                        "slope": slope,
+                        "intercept": intercept,
+                        "rmse": rmse,
+                        "mae": mae,
+                        "r2": r2,
+                        "y_pred": y_pred,            # somente dados válidos
+                        "y_pred_full": y_pred_full   # TODAS as linhas (para plot)
+                    }
+
+                resultado = regressao_linear_manual(df_trkv_trated)
+
+                slope = resultado["slope"]
+                intercept = resultado["intercept"]
+                r2 = resultado["r2"]
+                rmse = resultado["rmse"]
+                mae = resultado["mae"]
+                y_pred = resultado["y_pred_full"]
+
+                df_projecao = projetar_regressao(
+                    df_trkv_trated, slope, intercept, dias_a_frente=30)
+
+                print(f"Slope: {slope}")
+                print(f"Intercept: {intercept}")
+                print(f"R²: {r2}")
+                print(f"RMSE: {rmse}")
+                print(f"MAE: {mae}")
+
+            except Exception as e:
+                print(f"Erro na regressão: {e}")
+                slope = 0
+                intercept = 0
+                r2 = 0
+                rmse = 0
+                mae = 0
+                y_pred = 0
+
+
+        # -------------------------------------------------------------------Regressão
+
+
+            def plot_Waysides():
+                try:
+                    fig_trkv = go.Figure()
+
+                    # -------------------------
+                    # 1. Série real
+                    # -------------------------
+                    fig_trkv.add_trace(go.Scatter(
+                        x=df_trkv_trated["Data"],
+                        y=df_trkv_trated["TRKV_MAX_Cunha"],
+                        mode="lines+markers+text",
+                        text=df_trkv_trated["TRKV_MAX_Cunha"].round(1).astype(str),
+                        textposition="top center",
+                        name="TRKV_MAX_Cunha",
+                        marker=dict(size=7),
+                        line=dict(width=2)
+                    ))
+
+                    # -------------------------
+                    # 2. Linha de regressão real
+                    # -------------------------
+                    fig_trkv.add_trace(go.Scatter(
+                        x=df_trkv_trated["Data"],
+                        y=y_pred,
+                        mode="lines",
+                        line=dict(width=2, dash="dash", color="#A52BE3"),
+                        name=f"Regressão Linear (slope={slope:.4f})"
+                    ))
+
+                    # -------------------------
+                    # 3. PROJEÇÃO FUTURA
+                    # -------------------------
+                    fig_trkv.add_trace(go.Scatter(
+                        x=df_projecao["Data"],
+                        y=df_projecao["y_pred"],
+                        mode="lines",
+                        line=dict(width=2, dash="dot", color="#5A5555"),
+                        name="Projeção Futura (+30 dias)"
+                    ))
+
+                    # -------------------------
+                    # 4. Alarme MAX
+                    # -------------------------
+                    MAP_WEDGE = {
+                        2: 45,
+                        3: 57,
+                        4: 64,
+                        5: 57,
+                    }
+
+                    code = df_trkv["WedgeTypeCode"].iloc[0]
+
+                    # trata NaN e 0 como inválido
+                    if pd.isna(code) or code == 0:
+                        label = "inválido"
+                    else:
+                        label = MAP_WEDGE.get(int(code), "inválido")
+
+                    df_trkv_trated['Alarme'] = label
+                    fig_trkv.add_trace(go.Scatter(
+                        x=df_trkv_trated["Data"],
+                        y=df_trkv_trated['Alarme'],
+                        mode="lines",
+                        line=dict(color="red", width=2, dash="dash"),
+                        name=f"Alarme em {label}"
+                    ))
+                    # Layout
+                    fig_trkv.update_layout(
+                        title="TRKV - Regressão + Projeção Futura",
+                        xaxis_title="Data",
+                        yaxis_title="Valor",
+                        template="plotly_white",
+                        height=380,
+                    )
+
+                    # Range eixo Y
+                    fig_trkv.update_yaxes(range=[10, 90])
+                except Exception as e:
+                    print(f"Erro ao plotar gráfico TRKV: {e}")
+                    fig_trkv = go.Figure()
+
+                # =========================
+                # WCM
+                # =========================
+                try:
+                    df_wcm_trated["Alarme"] = 210
+
+                    fig_wcm = go.Figure()
+
+                    # Curva principal
+                    fig_wcm.add_trace(go.Scatter(
+                        x=df_wcm_trated["Data"],
+                        y=df_wcm_trated["Maior_Impacto_kN"],
+                        mode="lines+markers+text",
+                        text=df_wcm_trated["Maior_Impacto_kN"].round(
+                            1).astype(str),
+                        textposition="top center",
+                        name="Maior_Impacto_kN",
+                        marker=dict(size=7),
+                        line=dict(width=2)
+                    ))
+
+                    # Linha de limite
+                    fig_wcm.add_trace(go.Scatter(
+                        x=df_wcm_trated["Data"],
+                        y=df_wcm_trated["Alarme"],
+                        mode="lines",
+                        name="Alarme 200 kN",
+                        line=dict(color="red", width=2, dash="dash")
+                    ))
+
+                    fig_wcm.update_layout(
+                        title="wcm",
+                        xaxis_title="Data",
+                        yaxis_title="Valor",
+                        template="plotly_white",
+                        height=380
+                    )
+
+                    fig_wcm.update_yaxes(range=[0, 300])
+                except Exception as e:
+                    print(f"Erro ao plotar gráfico WCM: {e}")
+                    fig_wcm = go.Figure()
+
+                # =========================
+                # TBOGI
+                # =========================
+                try:
+                    df_TBOGI_trated["Alarme"] = 15
+                    df_TBOGI_trated.rename(
+                        columns={"timestamp_received": "Data"}, inplace=True)
+
+                    fig_TBOGI = go.Figure()
+
+                    # Curva principal
+                    fig_TBOGI.add_trace(go.Scatter(
+                        x=df_TBOGI_trated["Data"],
+                        y=df_TBOGI_trated["max_valor_mod_pd"],
+                        mode="lines+markers+text",
+                        text=df_TBOGI_trated["max_valor_mod_pd"].round(
+                            1).astype(str),
+                        textposition="top center",
+                        name="max_valor_mod_pd",
+                        marker=dict(size=7),
+                        line=dict(width=2)
+                    ))
+
+                    # Linha de limite
+                    fig_TBOGI.add_trace(go.Scatter(
+                        x=df_TBOGI_trated["Data"],
+                        y=df_TBOGI_trated["Alarme"],
+                        mode="lines",
+                        name="Alarme 10 ",
+                        line=dict(color="red", width=2, dash="dash")
+                    ))
+
+                    fig_TBOGI.update_layout(
+                        title="TBOGI",
+                        xaxis_title="Data",
+                        yaxis_title="Valor",
+                        template="plotly_white",
+                        height=380
+                    )
+
+                    fig_TBOGI.update_yaxes(range=[0, 30])
+                except Exception as e:
+                    print(f"Erro ao plotar gráfico TBOGI: {e}")
+                    fig_TBOGI = go.Figure()
+                # =========================
+                # STREAMLIT LAYOUT
+                # =========================
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("TRKV Cunha Máximo Passagem (mm)")
+                    MAP_WEDGE = {
+                        2: "Ride Control",
+                        3: "Barber",
+                        4: "Ride Master",
+                        5: "Motion Control",
+                    }
+
+                    code = df_trkv["WedgeTypeCode"].iloc[0]
+
+                    # trata NaN e 0 como inválido
+                    if pd.isna(code) or code == 0:
+                        label = "inválido"
+                    else:
+                        # int() se o dtype vier float
+                        label = MAP_WEDGE.get(int(code), "inválido")
+
+                    st.markdown(f'Tipo de Truque:  **{label}**')
+                    fig_trkv.update_layout(
+                        # legenda horizontal abaixo do gráfico
+                        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+                    )
+                    st.plotly_chart(fig_trkv, width="stretch",
+                                    key="plot_trkv")
+                    # st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
+                    st.markdown(f"""
+                    **R²:** `{r2:.4f}`
+                    **MAE:** `{mae:.4f}`
+                    **RMSE:** `{rmse:.4f}`
+                    """)
+                    st.dataframe(df_trkv_trated.sort_values(
+                        by="Data", ascending=False).reset_index(drop=True))
+
+                with col2:
+                    st.subheader("WCM Maior Impacto (kN)")
+                    fig_wcm.update_layout(
+                        # legenda horizontal abaixo do gráfico
+                        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+                    )
+                    st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
+                    st.markdown(f"""
+                    **Alarme Baixo:** `-`
+                    **Alarme Médio:** `-`
+                    **Alarme Alto:** `-`
+                    """)
+                    st.dataframe(df_wcm_trated.sort_values(
+                        by="Data", ascending=False).reset_index(drop=True))
+
+                col2_1, col2_2 = st.columns(2)
+
+                with col2_1:
+                    st.subheader("TBOGI Módulo Max ()")
+                    fig_TBOGI.update_layout(
+                        # legenda horizontal abaixo do gráfico
+                        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+                    )
+                    st.plotly_chart(
+                        fig_TBOGI, width="stretch", key="plot_tbogi")
+                    st.dataframe(df_TBOGI_trated.sort_values(
+                        by="Data", ascending=False).reset_index(drop=True))
+
+                with col2_2:
+                    st.subheader("Detector Acústico")
+                    # st.plotly_chart(fig_detector, use_container_width=True, key="plot_detector")
+
+                    # Plota gráfico de linha
+        # graficos WCM e TRKV
+            try:
+                plot_Waysides()
+            except Exception as e:
+                print(f"Erro ao plotar gráficos Waysides: {e}")
+
+            st.write("---")
+        # ------------------------
+            if not df_SAT_TAREFAS_full.empty:
+                df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
+                    'NUMDOC', 'DH_CRIACAO', 'DHFIM', 'DESCRICAO_TAREFA', 'Status', 'DESCRICAO_ECP', 'Sistema', 'OBS_ATUAL']]
+
+            def plotar_TELA_SAT(df_SAT_TAREFAS_full):
+
+                import streamlit as st
+                import streamlit.components.v1 as components
+                import pandas as pd
+                import json
+
+                # st.write("---")
+                st.markdown(f"### Tarefas Realizadas em Manutenção")
+
+                # Converter DataFrame para lista de dicionários
+                dados = df_SAT_TAREFAS_full.to_dict(orient="records")
+
+                # Converter Timestamp para string
+                for row in dados:
+                    for k, v in row.items():
+
+                        # Tratamento para Timestamps
+                        if isinstance(v, pd.Timestamp):
+                            row[k] = "" if pd.isna(v) else v.strftime(
+                                "%Y-%m-%d %H:%M:%S")
+
+                        # NaT explícito
+                        elif v is pd.NaT:
+                            row[k] = ""
+
+                        # NaN numérico (float("nan"))
+                        elif isinstance(v, float) and np.isnan(v):
+                            row[k] = ""
+
+                        # None
+                        elif v is None:
+                            row[k] = ""
+
+                html_code = f"""
+                <html>
+                <head>
+                <meta charset="UTF-8">
+
+                <style>
+
+                    #root, .block-container, .main {{
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }}
+                    .block-container {{
+                        max-width: 100% !important;
+                    }}
+
+                    /* Remover padding lateral do Streamlit */
+                    .main .block-container {{
+                        padding-left: 0 !important;
+                        padding-right: 0 !important;
+                    }}
+
+                    /* Container em largura total */
+                    .container {{
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 20px !important;
+                    }}
+
+                    body {{
+                        font-family: 'Segoe UI', Arial, sans-serif;
+                        background-color: #ffffff;
+                    }}
+
+                    /* SEARCH BOX FIXA */
+                    .search-box {{
+                        margin: 0 0 15px 0;
+                        display: flex;
+                        border: 1px solid #ddd;
+                        padding: 12px 18px;
+                        border-radius: 25px;
+                        background: #ffffff !important;
+                        box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+
+                        position: sticky;
+                        top: 0;
+                        z-index: 20;
+                    }}
+
+                    .search-input {{
+                        border: none;
+                        background: none;
+                        width: 100%;
+                        outline: none;
+                        font-size: 16px;
+                    }}
+
+                    /* TABELA ESTILO NOTION + GOOGLE */
+                    table {{
+                        width: 100%;
+                        border-collapse: separate;
+                        border-spacing: 0 4px;
+                        font-size: 14px;
+                    }}
+
+                    thead tr {{
+                        background: #f3f3f3;
+                        border-radius: 6px;
+
+                        position: sticky;
+                        top: 60px; /* Alinhar com search-box */
+                        z-index: 10;
+                    }}
+
+                    th {{
+                        text-align: left;
+                        padding: 10px 12px;
+                        font-weight: 600;
+                        color: #333;
+                        border-bottom: 1px solid #e5e5e5;
+                    }}
+
+                    tbody tr {{
+                        background: #fff;
+                        transition: 0.15s ease-in-out;
+                    }}
+
+                    tbody tr:hover {{
+                        background: #f7faff;
+                        box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+                    }}
+
+                    td {{
+                        padding: 10px 12px;
+                        color: #333;
+                        border-bottom: 1px solid #f1f1f1;
+                        text-align: left;
+                    }}
+
+                    tbody tr:nth-child(even) {{
+                        background: #fafafa;
+                    }}
+
+                    .info-linhas {{
+                        font-size: 12px;
+                        color: #666;
+                        margin-top: 5px;
+                    }}
+
+                </style>
+
+                </head>
+
+                <body>
+
+                <div class="container">
+
+                    <div class="search-box">
+                        <input class="search-input" id="searchInput" placeholder="Pesquisar por DESCRICAO_TAREFA..." />
+                    </div>
+
+                    <div class="info-linhas" id="infoLinhas"></div>
+
+                    <table>
+                        <thead>
+                            <tr id="headerRow"></tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+
+                </div>
+
+                <script>
+
+                    const dados = {json.dumps(dados, ensure_ascii=False)};
+                    const colunas = dados.length > 0 ? Object.keys(dados[0]) : [];
+
+                    // Montar cabeçalho
+                    function renderHeader() {{
+                        const headerRow = document.getElementById("headerRow");
+                        headerRow.innerHTML = "";
+                        colunas.forEach(col => {{
+                            const th = document.createElement("th");
+                            th.textContent = col;
+                            headerRow.appendChild(th);
+                        }});
+                    }}
+
+                    // Montar tabela
+                    function renderTabela(linhas) {{
+                        const tbody = document.getElementById("tableBody");
+                        const info = document.getElementById("infoLinhas");
+                        tbody.innerHTML = "";
+
+                        linhas.forEach(row => {{
+                            const tr = document.createElement("tr");
+                            colunas.forEach(col => {{
+                                const td = document.createElement("td");
+                                td.textContent = row[col] ?? "";
+                                tr.appendChild(td);
+                            }});
+                            tbody.appendChild(tr);
+                        }});
+
+                        info.textContent = linhas.length + " linha(s) exibida(s)";
+                    }}
+
+                    // Render inicial
+                    renderHeader();
+                    renderTabela(dados);
+
+                    // Filtro em tempo real
+                    document.getElementById("searchInput").addEventListener("input", function() {{
+                        const q = this.value.toLowerCase();
+
+                        const filtrado = dados.filter(row => {{
+                            const texto = String(row["DESCRICAO_TAREFA"] || "").toLowerCase();
+                            return texto.includes(q);
+                        }});
+
+                        renderTabela(filtrado);
                     }});
-                    tbody.appendChild(tr);
-                }});
 
-                info.textContent = linhas.length + " linha(s) exibida(s)";
-            }}
+                </script>
 
-            // Render inicial
-            renderHeader();
-            renderTabela(dados);
+                </body>
+                </html>
+                """
 
-            // Filtro em tempo real
-            document.getElementById("searchInput").addEventListener("input", function() {{
-                const q = this.value.toLowerCase();
+                components.html(html_code, height=900, scrolling=True)
+            try:
+                plotar_TELA_SAT(df_SAT_TAREFAS_full)
+            except Exception as e:
+                print(f"Erro ao exibir TELA SAT: {e}")
+            st.write("---")
+        # ------------------------
 
-                const filtrado = dados.filter(row => {{
-                    const texto = String(row["DESCRICAO_TAREFA"] || "").toLowerCase();
-                    return texto.includes(q);
-                }});
+            try:  # 164
+                st.markdown("## Dados SAP censo")
+                st.markdown("### Informações técnicas última Manutenção")
+                st.dataframe(df_censo)
+            except Exception as e:
+                print(f"Erro ao exibir dados senso: {e}")
+            st.write("---")
+            try:  # 164
+                st.markdown("## Dados Tela 164 Translogic")
+                st.markdown("### Posicionamento mais recente e Carga - Translogic")
+                st.dataframe(df_164)
+            except Exception as e:
+                print(f"Erro ao exibir dados df_164: {e}")
 
-                renderTabela(filtrado);
-            }});
+            st.write("---")
+            try:  # z369
+                st.markdown("## Dados Tela z369 SAP")
+                st.markdown("### Dados de Notas de Manutenção - SAP")
+                colunas_z369 = [
+                    "NOTA",
+                    "ATIVO",
+                    "MODELO",
+                    "dt_abertura_trated",
+                    "dt_fechamento_trated",
+                    "STATUS",
+                    "TP NOTA",
+                    "TEXTO",
+                    "TEXTO AVARIA",
+                    "TEXTO CAUSA",
+                    "Flag"
+                ]
+                df_z369['dt_abertura_trated'] = (
+                    pd.to_datetime(df_z369['dt_abertura_trated'])
+                    .dt.strftime("%d/%m/%Y")
+                )
 
-        </script>
+                df_z369['dt_fechamento_trated'] = (
+                    pd.to_datetime(df_z369['dt_fechamento_trated'])
+                    .dt.strftime("%d/%m/%Y")
+                )
+                st.dataframe(df_z369[colunas_z369].sort_values(
+                    by="dt_abertura_trated", ascending=False).reset_index(drop=True))
+            except Exception as e:
+                print(f"Erro ao exibir dados df_z369: {e}")
+            st.write("---")
 
-        </body>
-        </html>
-        """
+            try:  # WCM
+                st.markdown("## Dados WCM")
+                st.markdown(
+                    "### Dados de medição de Impacto de Roda - WAYSIDE Wheel Impact")
 
-        components.html(html_code, height=900, scrolling=True)
-    try:
-        plotar_TELA_SAT(df_SAT_TAREFAS_full)
-    except Exception as e:
-        print(f"Erro ao exibir TELA SAT: {e}")
-    st.write("---")
-# ------------------------
+                colunas_zWCM = [
+                    "json_header",
+                    "json_Identificação do veículo",
+                    "json_Força de pico de impacto da roda (kN)",
+                    "Data",
+                    "json_trem_TrainTime",
+                    "json_Lateral da linha",
+                    "json_trem_L_Dir",
+                    "json_Tipo do veículo"
+                ]
+                st.dataframe(df_WCM[colunas_zWCM].sort_values(
+                    by="Data", ascending=False).reset_index(drop=True))
+            except Exception as e:
+                print(f"Erro ao exibir dados df_WCM: {e}")
+            st.write("---")
 
-    try:  # 164
-        st.markdown("## Dados SAP censo")
-        st.markdown("### Informações técnicas última Manutenção")
-        st.dataframe(df_censo)
-    except Exception as e:
-        print(f"Erro ao exibir dados senso: {e}")
-    st.write("---")
-    try:  # 164
-        st.markdown("## Dados Tela 164 Translogic")
-        st.markdown("### Posicionamento mais recente e Carga - Translogic")
-        st.dataframe(df_164)
-    except Exception as e:
-        print(f"Erro ao exibir dados df_164: {e}")
+            try:  # trkv
+                st.markdown("## Dados TRKV")
+                st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
 
-    st.write("---")
-    try:  # z369
-        st.markdown("## Dados Tela z369 SAP")
-        st.markdown("### Dados de Notas de Manutenção - SAP")
-        colunas_z369 = [
-            "NOTA",
-            "ATIVO",
-            "MODELO",
-            "dt_abertura_trated",
-            "dt_fechamento_trated",
-            "STATUS",
-            "TP NOTA",
-            "TEXTO",
-            "TEXTO AVARIA",
-            "TEXTO CAUSA",
-            "Flag"
-        ]
-        df_z369['dt_abertura_trated'] = (
-            pd.to_datetime(df_z369['dt_abertura_trated'])
-            .dt.strftime("%d/%m/%Y")
-        )
+                colunas_TRKV = [
+                    "Header_TrainSequenceNumber",
+                    "CarOrientation",
+                    "CarIDInitial",
+                    "CarIDNumber",
+                    "max_valor",
+                    "A#L_1",
+                    "A#L_2",
+                    "A#R_1",
+                    "A#R_2",
+                    "B#L_1",
+                    "B#L_2",
+                    "B#R_1",
+                    "B#R_2",
+                    "STATUS_out"
+                ]
 
-        df_z369['dt_fechamento_trated'] = (
-            pd.to_datetime(df_z369['dt_fechamento_trated'])
-            .dt.strftime("%d/%m/%Y")
-        )
-        st.dataframe(df_z369[colunas_z369].sort_values(
-            by="dt_abertura_trated", ascending=False).reset_index(drop=True))
-    except Exception as e:
-        print(f"Erro ao exibir dados df_z369: {e}")
-    st.write("---")
+                st.dataframe(
+                    df_trkv[colunas_TRKV]
+                    .sort_values(by="max_valor", ascending=False)
+                    .reset_index(drop=True)
+                )
+            except Exception as e:
+                print(f"Erro ao exibir dados df_trkv: {e}")
+            st.write("---")
 
-    try:  # WCM
-        st.markdown("## Dados WCM")
-        st.markdown(
-            "### Dados de medição de Impacto de Roda - WAYSIDE Wheel Impact")
+            try:
+                st.markdown("## Dados SAP sz851")
+                st.markdown("### Cadastro do vagão")
+                st.dataframe(df_z851)
+            except Exception as e:
+                print(f"Erro ao exibir dados df_z851: {e}")
 
-        colunas_zWCM = [
-            "json_header",
-            "json_Identificação do veículo",
-            "json_Força de pico de impacto da roda (kN)",
-            "Data",
-            "json_trem_TrainTime",
-            "json_Lateral da linha",
-            "json_trem_L_Dir",
-            "json_Tipo do veículo"
-        ]
-        st.dataframe(df_WCM[colunas_zWCM].sort_values(
-            by="Data", ascending=False).reset_index(drop=True))
-    except Exception as e:
-        print(f"Erro ao exibir dados df_WCM: {e}")
-    st.write("---")
+            st.write("---")
 
-    try:  # trkv
-        st.markdown("## Dados TRKV")
-        st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
+            try:
+                st.markdown("## Dados SAP z1568")
+                st.markdown("### Liberações e Retenções")
+                st.dataframe(df_z1568)
+            except Exception as e:
+                print(f"Erro ao exibir dados df_z1568: {e}")
+            st.write("---")
 
-        colunas_TRKV = [
-            "Header_TrainSequenceNumber",
-            "CarOrientation",
-            "CarIDInitial",
-            "CarIDNumber",
-            "max_valor",
-            "A#L_1",
-            "A#L_2",
-            "A#R_1",
-            "A#R_2",
-            "B#L_1",
-            "B#L_2",
-            "B#R_1",
-            "B#R_2",
-            "STATUS_out"
-        ]
+            try:
+                # Selecionar apenas as colunas desejadas
+                def tratar_versos(df):
 
-        st.dataframe(
-            df_trkv[colunas_TRKV]
-            .sort_values(by="max_valor", ascending=False)
-            .reset_index(drop=True)
-        )
-    except Exception as e:
-        print(f"Erro ao exibir dados df_trkv: {e}")
-    st.write("---")
+                    df_clean = df_versonota[[
+                        "QMDAT", "QMNUM", "ATIVO_TL", "VERSO"]].copy()
 
-    try:
-        st.markdown("## Dados SAP sz851")
-        st.markdown("### Cadastro do vagão")
-        st.dataframe(df_z851)
-    except Exception as e:
-        print(f"Erro ao exibir dados df_z851: {e}")
+                    # ---- Tratamento da data QMDAT ----
+                    # QMDAT vem no formato YYYYMMDD como inteiro
+                    df_clean["QMDAT"] = (
+                        df_clean["QMDAT"]
+                        .astype(str)
+                        .str.zfill(8)                # garante 8 dígitos
+                        # formata para YYYY-MM-DD
+                        .apply(lambda x: f"{x[0:4]}-{x[4:6]}-{x[6:8]}")
+                    )
 
-    st.write("---")
+                    return df_clean
+                st.markdown("## Dados df_versonota")
+                st.markdown("### Anotações de Verso de Notas")
+                st.dataframe(tratar_versos(df_versonota))
+            except Exception as e:
+                print(f"Erro ao exibir dados df_versonota: {e}")
+            st.write("---")
 
-    try:
-        st.markdown("## Dados SAP z1568")
-        st.markdown("### Liberações e Retenções")
-        st.dataframe(df_z1568)
-    except Exception as e:
-        print(f"Erro ao exibir dados df_z1568: {e}")
-    st.write("---")
+            # ----------------------------------------------------
+            # FORMATADOR DE TEXTO
+            # ----------------------------------------------------
 
-    try:
-        # Selecionar apenas as colunas desejadas
-        def tratar_versos(df):
+            def formatar_texto_avaria(texto):
+                if not isinstance(texto, str):
+                    return ""
 
-            df_clean = df_versonota[[
-                "QMDAT", "QMNUM", "ATIVO_TL", "VERSO"]].copy()
+                partes = [p.strip() for p in texto.split(";") if p.strip()]
+                linhas = []
 
-            # ---- Tratamento da data QMDAT ----
-            # QMDAT vem no formato YYYYMMDD como inteiro
-            df_clean["QMDAT"] = (
-                df_clean["QMDAT"]
+                for parte in partes:
+
+                    if re.match(r'^\d+\.', parte):  # Título principal
+                        linhas.append(
+                            f"<h4 style='margin-top:12px;color:#1F4E79'><b>{parte}</b></h4>")
+                        continue
+
+                    if re.match(r'^\d+\.\d+', parte):  # Subtítulo
+                        linhas.append(f"<b style='color:#3A3A3A'>{parte}</b><br>")
+                        continue
+
+                    if ":" in parte:
+                        chave, valor = parte.split(":", 1)
+                        linhas.append(
+                            f"<div style='margin-left:10px;'>• <b>{chave.strip()}</b>: {valor.strip()}</div>")
+                        continue
+
+                    linhas.append(parte + "<br>")
+
+                return "\n".join(linhas)
+
+            # ----------------------------------------------------
+            # STREAMLIT
+            # ----------------------------------------------------
+
+            st.title("📄 Visualizador do Verso da Nota")
+
+            coluna_texto = "VERSO"
+
+            if "QMNUM" not in df_versonota.columns:
+                st.error("A coluna QMNUM não existe.")
+                st.stop()
+
+            if coluna_texto not in df_versonota.columns:
+                st.error("A coluna VERSO não existe.")
+                st.stop()
+
+            df_versonota["texto_formatado"] = df_versonota[coluna_texto].apply(
+                formatar_texto_avaria)
+
+            registros = df_versonota[["QMNUM", "QMDAT",
+                                    "texto_formatado"]].to_dict(orient="records")
+            df_versonota["QMDAT"] = (
+                df_versonota["QMDAT"]
                 .astype(str)
                 .str.zfill(8)                # garante 8 dígitos
                 # formata para YYYY-MM-DD
                 .apply(lambda x: f"{x[0:4]}-{x[4:6]}-{x[6:8]}")
             )
 
-            return df_clean
-        st.markdown("## Dados df_versonota")
-        st.markdown("### Anotações de Verso de Notas")
-        st.dataframe(tratar_versos(df_versonota))
-    except Exception as e:
-        print(f"Erro ao exibir dados df_versonota: {e}")
-    st.write("---")
+            # ----------------------------------------------------
+            # HTML + CSS + JS (CARD À ESQUERDA)
+            # ----------------------------------------------------
+            st.components.v1.html(f"""
 
-    # ----------------------------------------------------
-    # FORMATADOR DE TEXTO
-    # ----------------------------------------------------
+            <style>
+                .card {{
+                    background: #ffffff;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-left: 0px;
+                    max-width: 650px;
+                    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
+                }}
+                .nav-buttons {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 15px;
+                }}
+                .btn-nav {{
+                    flex: 1;
+                    padding: 12px;
+                    margin: 4px;
+                    background: #1F4E79;
+                    color: white;
+                    font-size: 16px;
+                    border-radius: 8px;
+                    border: none;
+                    cursor: pointer;
+                }}
+                .btn-nav:disabled {{
+                    background: #A0A0A0;
+                    cursor: not-allowed;
+                }}
+            </style>
 
-    def formatar_texto_avaria(texto):
-        if not isinstance(texto, str):
-            return ""
+            <div class="card">
 
-        partes = [p.strip() for p in texto.split(";") if p.strip()]
-        linhas = []
+                <div class="nav-buttons">
+                    <button id="prevBtn" class="btn-nav">⬅️ Anterior</button>
+                    <button id="nextBtn" class="btn-nav">Próximo ➡️</button>
+                </div>
 
-        for parte in partes:
+                <h3 id="qmnum" style="margin-bottom:4px;"></h3>
+                <p id="qmdat" style="margin-top:-8px; color:#777;"></p>
+                <p id="pos" style="color:#555; margin-top:4px;"></p>
 
-            if re.match(r'^\d+\.', parte):  # Título principal
-                linhas.append(
-                    f"<h4 style='margin-top:12px;color:#1F4E79'><b>{parte}</b></h4>")
-                continue
+                <div id="texto" style="margin-top: 15px; font-size: 16px; line-height: 1.45;"></div>
 
-            if re.match(r'^\d+\.\d+', parte):  # Subtítulo
-                linhas.append(f"<b style='color:#3A3A3A'>{parte}</b><br>")
-                continue
+            </div>
 
-            if ":" in parte:
-                chave, valor = parte.split(":", 1)
-                linhas.append(
-                    f"<div style='margin-left:10px;'>• <b>{chave.strip()}</b>: {valor.strip()}</div>")
-                continue
+            <script>
+                const registros = {json.dumps(registros)};
+                let pos = 0;
 
-            linhas.append(parte + "<br>")
+                function render() {{
+                    const r = registros[pos];
 
-        return "\n".join(linhas)
+                    document.getElementById("qmnum").innerHTML =
+                        "📌 QMNUM: <b>" + r.QMNUM + "</b>";
 
-    # ----------------------------------------------------
-    # STREAMLIT
-    # ----------------------------------------------------
+                    document.getElementById("qmdat").innerHTML =
+                        "📅 Data: <b>" + (r.QMDAT ?? "").slice(0, 10) + "</b>";
 
-    st.title("📄 Visualizador do Verso da Nota")
+                    document.getElementById("pos").innerHTML =
+                        "Registro " + (pos+1) + " de " + registros.length;
 
-    coluna_texto = "VERSO"
+                    document.getElementById("texto").innerHTML = r.texto_formatado;
 
-    if "QMNUM" not in df_versonota.columns:
-        st.error("A coluna QMNUM não existe.")
-        st.stop()
+                    document.getElementById("prevBtn").disabled = (pos === 0);
+                    document.getElementById("nextBtn").disabled = (pos === registros.length - 1);
+                }}
 
-    if coluna_texto not in df_versonota.columns:
-        st.error("A coluna VERSO não existe.")
-        st.stop()
+                document.getElementById("prevBtn").onclick = () => {{
+                    if (pos > 0) {{ pos--; render(); }}
+                }}
 
-    df_versonota["texto_formatado"] = df_versonota[coluna_texto].apply(
-        formatar_texto_avaria)
+                document.getElementById("nextBtn").onclick = () => {{
+                    if (pos < registros.length-1) {{ pos++; render(); }}
+                }}
 
-    registros = df_versonota[["QMNUM", "QMDAT",
-                              "texto_formatado"]].to_dict(orient="records")
-    df_versonota["QMDAT"] = (
-        df_versonota["QMDAT"]
-        .astype(str)
-        .str.zfill(8)                # garante 8 dígitos
-        # formata para YYYY-MM-DD
-        .apply(lambda x: f"{x[0:4]}-{x[4:6]}-{x[6:8]}")
-    )
+                render();
+            </script>
 
-    # ----------------------------------------------------
-    # HTML + CSS + JS (CARD À ESQUERDA)
-    # ----------------------------------------------------
-    st.components.v1.html(f"""
-
-    <style>
-        .card {{
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-left: 0px;
-            max-width: 650px;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
-        }}
-        .nav-buttons {{
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }}
-        .btn-nav {{
-            flex: 1;
-            padding: 12px;
-            margin: 4px;
-            background: #1F4E79;
-            color: white;
-            font-size: 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-        }}
-        .btn-nav:disabled {{
-            background: #A0A0A0;
-            cursor: not-allowed;
-        }}
-    </style>
-
-    <div class="card">
-
-        <div class="nav-buttons">
-            <button id="prevBtn" class="btn-nav">⬅️ Anterior</button>
-            <button id="nextBtn" class="btn-nav">Próximo ➡️</button>
-        </div>
-
-        <h3 id="qmnum" style="margin-bottom:4px;"></h3>
-        <p id="qmdat" style="margin-top:-8px; color:#777;"></p>
-        <p id="pos" style="color:#555; margin-top:4px;"></p>
-
-        <div id="texto" style="margin-top: 15px; font-size: 16px; line-height: 1.45;"></div>
-
-    </div>
-
-    <script>
-        const registros = {json.dumps(registros)};
-        let pos = 0;
-
-        function render() {{
-            const r = registros[pos];
-
-            document.getElementById("qmnum").innerHTML =
-                "📌 QMNUM: <b>" + r.QMNUM + "</b>";
-
-            document.getElementById("qmdat").innerHTML =
-                "📅 Data: <b>" + (r.QMDAT ?? "").slice(0, 10) + "</b>";
-
-            document.getElementById("pos").innerHTML =
-                "Registro " + (pos+1) + " de " + registros.length;
-
-            document.getElementById("texto").innerHTML = r.texto_formatado;
-
-            document.getElementById("prevBtn").disabled = (pos === 0);
-            document.getElementById("nextBtn").disabled = (pos === registros.length - 1);
-        }}
-
-        document.getElementById("prevBtn").onclick = () => {{
-            if (pos > 0) {{ pos--; render(); }}
-        }}
-
-        document.getElementById("nextBtn").onclick = () => {{
-            if (pos < registros.length-1) {{ pos++; render(); }}
-        }}
-
-        render();
-    </script>
-
-    """, height=750, scrolling=True)
+            """, height=750, scrolling=True)
