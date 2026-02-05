@@ -740,12 +740,16 @@ def busca_z851_se_existe(vagao):
         df = pd.DataFrame(list(cursor1))
         
         if df.empty:
+            #st.write("VAZIO")
             return False
-            st.write("VAZIO")
+        elif  df['ELIMINADO'][0] == 'X':
+                #st.write("ELIMINADO")
+                return 'X'  
         else:
+            #st.write("tem conteudo")
             return True
-            st.write("tem conteudo")
-        st.write(df.empty)
+            
+       
 
 # functions End ----------------------------------------------------
 # Tela -----------------------
@@ -761,6 +765,9 @@ if st.button("Executar função"):
         minha_funcao(vg_entrada)
         if not busca_z851_se_existe(vg_entrada):
             st.header(f"O Vagão {vg_entrada} não consta na base de dados!")
+            st.header("Verifique se foi digitado corretamente!")
+        elif busca_z851_se_existe(vg_entrada) == 'X':
+            st.header(f"O Vagão {vg_entrada} consta como Eliminado!")
             st.header("Verifique se foi digitado corretamente!")
         else:
 
@@ -1437,11 +1444,23 @@ if st.button("Executar função"):
                         xaxis_title="Data",
                         yaxis_title="Valor",
                         template="plotly_white",
-                        height=380,
+                        height=420,
+                        margin=dict(t=60, r=30, b=110, l=60),  # MAIS espaço embaixo p/ a legenda
+                        legend=dict(
+                                orientation="h",   # legenda horizontal
+                                x=0,               # começa na esquerda
+                                y=-0.22,           # coloca a legenda abaixo da área do gráfico
+                                xanchor="left",
+                                yanchor="top",
+                                traceorder="normal",
+                                bgcolor="rgba(0,0,0,0)",  # sem fundo
+                                font=dict(size=12)
+                            )
+
                     )
 
                     # Range eixo Y
-                    fig_trkv.update_yaxes(range=[10, 90])
+                    #fig_trkv.update_yaxes(range=[10, 90])
                 except Exception as e:
                     print(f"Erro ao plotar gráfico TRKV: {e}")
                     fig_trkv = go.Figure()
@@ -1477,14 +1496,25 @@ if st.button("Executar função"):
                     ))
 
                     fig_wcm.update_layout(
-                        title="wcm",
+                        title="WCM",
                         xaxis_title="Data",
                         yaxis_title="Valor",
                         template="plotly_white",
-                        height=380
+                        height=420,
+                        margin=dict(t=60, r=30, b=110, l=60),  # MAIS espaço embaixo p/ a legenda
+                        legend=dict(
+                                orientation="h",   # legenda horizontal
+                                x=0,               # começa na esquerda
+                                y=-0.22,           # coloca a legenda abaixo da área do gráfico
+                                xanchor="left",
+                                yanchor="top",
+                                traceorder="normal",
+                                bgcolor="rgba(0,0,0,0)",  # sem fundo
+                                font=dict(size=12)
+                            )
                     )
 
-                    fig_wcm.update_yaxes(range=[0, 300])
+                    #fig_wcm.update_yaxes(range=[0, 300])
                 except Exception as e:
                     print(f"Erro ao plotar gráfico WCM: {e}")
                     fig_wcm = go.Figure()
@@ -1575,6 +1605,10 @@ if st.button("Executar função"):
 
                 with col2:
                     st.subheader("WCM Maior Impacto (kN)")
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.write(" ")
+                    #st.write(" ")
+                    #st.write(" ")
                     fig_wcm.update_layout(
                         # legenda horizontal abaixo do gráfico
                         legend=dict(orientation="h", yanchor="bottom", y=-0.3)
@@ -1591,7 +1625,7 @@ if st.button("Executar função"):
                 col2_1, col2_2 = st.columns(2)
 
                 with col2_1:
-                    st.subheader("TBOGI Módulo Max ()")
+                    st.subheader("TBOGI Módulo Max")
                     fig_TBOGI.update_layout(
                         # legenda horizontal abaixo do gráfico
                         legend=dict(orientation="h", yanchor="bottom", y=-0.3)
