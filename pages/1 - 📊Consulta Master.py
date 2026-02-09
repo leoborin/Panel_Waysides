@@ -509,6 +509,9 @@ def tratar_dfs(df_WCM, df_z369, df_trkv, df_busca_TBOGI):
         colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
                            "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
 
+        #df_trkv["A#L_1"] = df_trkv["A#L_1"].map('{:.2f}'.format)
+        #print("formato coluna")
+        #print(df_trkv["A#L_1"])
         df_trkv[colunas_impacto] = df_trkv[colunas_impacto].replace(0, np.nan)
 
         df_trkv['Maior_Impacto_Linha'] = df_trkv[colunas_impacto].max(axis=1)
@@ -1953,7 +1956,11 @@ if st.button("Executar função"):
             try:  # trkv
                 st.markdown("## Dados TRKV")
                 st.markdown("### Dados de medição de Cunha - WAYSIDE TruckView")
+                colunas_impacto = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                           "B#L_1", "B#L_2", "B#R_1", "B#R_2",'max_valor']
 
+                #df_trkv["A#L_1"] = df_trkv["A#L_1"].map('{:.2f}'.format)
+                df_trkv[colunas_impacto] = df_trkv[colunas_impacto].map('{:.2f}'.format)
                 colunas_TRKV = [
                     "Header_TrainSequenceNumber",
                     "CarOrientation",
