@@ -1961,7 +1961,8 @@ if st.button("Executar função"):
 
                 #df_trkv["A#L_1"] = df_trkv["A#L_1"].map('{:.2f}'.format)
                 df_trkv[colunas_impacto] = df_trkv[colunas_impacto].map('{:.2f}'.format)
-                df_trkv[colunas_impacto] = df_trkv[colunas_impacto].applymap(lambda x: str(x).replace('.', ','))
+                #convertendo ponto para virgula
+                #df_trkv[colunas_impacto] = df_trkv[colunas_impacto].applymap(lambda x: str(x).replace('.', ','))
                 colunas_TRKV = [
                     "Header_TrainSequenceNumber",
                     "CarOrientation",

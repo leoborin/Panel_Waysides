@@ -983,6 +983,13 @@ try:
                 lambda x: pd.to_datetime(
                     x, errors='coerce').dt.strftime('%d-%m-%Y')
             )
+    
+    #Tratando colunas para duas casas decimais
+    colunas_arrendondamento = ["KM_RODADO_DESDE_ULTIMA_RG", "WCM_max_medicao_ultimas_3", "WCM_ultima_medicao", 
+            "TRKV_max_medicao_ultimas_3","TRKV_ultima_medicao"]
+    df_filtrado_com_link[colunas_arrendondamento] = df_filtrado_com_link[colunas_arrendondamento].map('{:.2f}'.format)
+
+
 
     #Renomeia as colunas
     df_filtrado_com_link.rename(columns={
@@ -996,7 +1003,7 @@ try:
         'WedgeTypeCode': 'Tipo de Truque',
         'Separador_WCM':'Separador_WCM',
         'WCM_max_medicao_ultimas_3':'WCM max média medição',
-        'WCM_ultima_medica': 'WCM Última medição',
+        'WCM_ultima_medicao': 'WCM Última medição',
         'WCM_last_timestamp': 'WCM Última data',
         'Separador_TRKV':'Separador_TRKV',
         'TRKV_max_medicao_ultimas_3':'TRKV max média medição',
