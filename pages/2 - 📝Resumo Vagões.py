@@ -915,11 +915,14 @@ try:
     lista_serie = sorted(df_base_concatenada["SERIE"].unique())
     lista_modelo = sorted(df_base_concatenada["MODELO"].unique())
     lista_status = sorted(df_base_concatenada["STATUS"].unique())
+    lista_truques = sorted(df_base_concatenada["WedgeTypeCode"].astype(int).unique())
 
     # Capturar seleções (sem aplicar ainda)
     with col1:
-        filtro_equnr = st.selectbox("Filtrar por EQUNR:", options=[
+        filtro_equnr = st.selectbox("Filtrar por Ativos:", options=[
                                     "Todos"] + lista_equnr, index=0)
+        filtro_tipo_truque = st.selectbox("Filtrar por Tipo de Truque:", options=[
+                                    "Todos"] + lista_truques, index=0)
 
     with col2:
         filtro_serie = st.multiselect(
@@ -947,12 +950,15 @@ try:
 
     if filtro_status:  # Se houver seleção
         df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(filtro_status)]
+    
+    if filtro_tipo_truque != "Todos":# if filtro_tipo_truque:  # Se houver seleção
+        df_filtrado = df_filtrado[df_filtrado["WedgeTypeCode"] == filtro_tipo_truque]
 
     col_WCM, col_TRKV = st.columns(2)
 
     with col_WCM:
         values = st.slider("Selecione um range para os valores de WCM",
-                           0, 500, (0, 500), key='slider_WCM')
+                           0, 300, (0, 300), key='slider_WCM')
         df_filtrado = df_filtrado[(df_filtrado["WCM_max_medicao_ultimas_3"] >= values[0])
                                   & (df_filtrado["WCM_max_medicao_ultimas_3"] <= values[1])]
 
