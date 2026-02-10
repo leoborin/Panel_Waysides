@@ -195,6 +195,8 @@ def busca_dados(vagao):
         if '_id' in df.columns:
             df.drop('_id', axis=1, inplace=True)
 
+        df = df[df['ELIMINADO']] != "X"
+
         return df
 
     def busca_wcm(vagao):
@@ -620,6 +622,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
     # ============================================================
     # 4) PREPARAÇÃO DO Z851 E MERGE FINAL
     # ============================================================
+    
 
     df_z851["key"] = (
         df_z851["EQUNR"]
