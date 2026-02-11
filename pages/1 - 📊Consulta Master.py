@@ -31,16 +31,130 @@ MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
 DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 cof_Outlier = 0.2
 
-logo = Image.open("assets/logo.png")
-st.logo(logo, size='large')
-col_logo, col_titulo = st.columns([1, 7])
-with col_logo:
-    st.image("assets/vg666.png", width=100)
-with col_titulo:
-    st.title("Consulta Completa Vagões v0 - Visão Micro")
+# logo = Image.open("assets/logo.png")
+# st.logo(logo, size='large')
+# col_logo, col_titulo = st.columns([1, 7])
+# with col_logo:
+#     st.image("assets/vg666.png", width=100)
+# with col_titulo:
+#     st.title("Consulta Completa Vagões v0 - Visão Micro")
 
-st.set_page_config(layout="wide")
-# st.write("POC Testes")
+# st.set_page_config(layout="wide")
+# # st.write("POC Testes")
+
+#--------------------------------------------------------------------------------
+## Configuração da página e cabeçalho
+#--------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Saúde da Frota de Vagões",
+    page_icon="🚆",
+    layout="wide"
+)
+
+# Paleta de Cores e CSS (inalterado)
+PRIMARY = "#0D3B66"
+ACCENT = "#5EA9DD"
+CARD_BG = "#F5F8FC"
+BORDER = "#DEE6F1"
+SUCCESS = "#7FE06C"
+WARNING = "#F39C12"
+DANGER = "#E74C3C"
+TEXT = "#1F2D3D"
+MUTED = "#6C7C8C"
+
+st.markdown(f"""
+<style>
+.topbar {{
+  background: {PRIMARY};
+  color: #fff;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.6fr;
+  align-items: center;
+}}
+.topbar .title {{
+  font-weight: 800;
+  font-size: 20px;
+}}
+.topbar .menu {{
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}}
+.topbar .menu .pill {{
+  
+background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 10px 18px;       /* Mais espaço interno */
+  border-radius: 6px;       /* Cantos levemente arredondados */
+  font-size: 14px;          /* Texto maior */
+  font-weight: 600;         /* Texto mais forte */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;         /* Evita texto quebrado */
+  justify-content: center;  /* Centraliza ícone e texto */
+}}
+.topbar .brand {{
+  justify-self: end;
+  font-weight: 900;
+  font-size: 22px;
+}}
+.section-box {{
+  border: 1px solid {BORDER};
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+}}
+.section-title {{
+  font-weight: 800; color: {TEXT}; margin-bottom: 8px;
+}}
+.caption {{
+  color: {MUTED};
+  font-size: 12px;
+  text-align: center;
+  margin-top: 6px;
+}}
+
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    """
+    <style>
+        .center-vertical {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+## Topbar
+st.markdown("""
+<div class="topbar">
+  <div class="title">SAÚDE DA FROTA DE VAGÕES</div>
+  <div class="menu">
+    <div class="pill">🧭 Visão executiva</div>
+    <div class="pill">⚠️ Previsões & Riscos</div>
+    <div class="pill">🧩 Saúde dos componentes</div>
+    <div class="pill">📓 Detalhamento por vagão</div>      
+  </div>
+  <div class="brand">
+    <img src="assets/logoneg.png" alt="Rumo" />
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")
+
+st.subheader("Detalhamento do vagão")
 
 # functions Begin --------------------------------------------------
 # main def
@@ -173,9 +287,7 @@ def busca_dados(vagao):
             # -----------------------------------------
             # 1) Filtro seguro (busca exata, não parcial)
             # -----------------------------------------
-
             filter = {'car_num': re.compile(f"{vagao}")}
-
             cursor = client[DB_NAME]["tbogi_treated"].find(filter)
 
             # -----------------------------------------
@@ -915,8 +1027,8 @@ if st.button("Executar função"):
                 row = df_z851_copia.iloc[0]
                 campos = [
                     'Ativo',
-                    'Bitola',
-                    'Malha',
+                    # 'Bitola',
+                    # 'Malha',
                     'Data de Fabricação',
                     'Data de Desativação',
                     'Data de Garantia do Ativo',
@@ -928,7 +1040,8 @@ if st.button("Executar função"):
                     'Última RR'
                 ]
 
-                st.subheader("📌 Informações do Vagão")
+                # st.subheader("📌 Informações do Vagão")
+                st.markdown("<div class='section-title'>Dados gerais do ativo</div>", unsafe_allow_html=True)
 
                 cards_por_linha = 3
 
@@ -942,9 +1055,19 @@ if st.button("Executar função"):
                         with cols[idx]:
                             st.markdown(
                                 f"""
-                                <div class="card">
-                                    <div class="card-title">{campo}</div>
-                                    <div class="card-value">{valor}</div>
+                                <div style="
+                                    background-color:{CARD_BG};
+                                    border:1px solid {BORDER};
+                                    border-radius:10px;
+                                    padding:14px;
+                                    text-align:center;
+                                ">
+                                    <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                        {campo}
+                                    </div>
+                                    <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                        {valor}
+                                    </div>
                                 </div>
                                 """,
                                 unsafe_allow_html=True
@@ -958,8 +1081,8 @@ if st.button("Executar função"):
 
                 dados = df_164.iloc[0]
                 with st.container():
-                    st.write("---")
-                    st.markdown(f"### Dados atuais do vagão")
+                    st.divider()
+                    st.markdown("<div class='section-title'>Dados atuais do ativo</div>", unsafe_allow_html=True)
                     dados['DT_CARGA'] = pd.to_datetime(dados['DT_CARGA']).strftime("%d-%m-%Y-%H:%M:%S")
                     st.write(f"**Data Atualização:** {dados['DT_CARGA']}")
                     dados = dados.astype('string').fillna('-')
@@ -967,92 +1090,181 @@ if st.button("Executar função"):
 
                     with col1:
 
-                        # st.write(f"**Vagão:** {dados['vagão']}")
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Local:</div>
-                                    <div class="card-value">{dados['LOCAL']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Local:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['LOCAL']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Trem:</div>
-                                    <div class="card-value">{dados['TREM']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Trem:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['TREM']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">OS:</div>
-                                    <div class="card-value">{dados['NR_OS']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                OS:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['NR_OS']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         
                     with col2:
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Código da Linha:</div>
-                                    <div class="card-value">{dados['COD_LINHA']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Código da Linha:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['COD_LINHA']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Recomendação:</div>
-                                    <div class="card-value">{dados['DESC_RECOMENDACAO']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Recomendação:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['DESC_RECOMENDACAO']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Lotação:</div>
-                                    <div class="card-value">{dados['DESC_LOTACAO']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Lotação:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['DESC_LOTACAO']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
 
                     with col3:
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Situação:</div>
-                                    <div class="card-value">{dados['DESC_SITUACAO']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Situação:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['DESC_SITUACAO']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">Mercadoria:</div>
-                                    <div class="card-value">{dados['DSC_MERCADORIA']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                Mercadoria:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['DSC_MERCADORIA']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                         st.markdown(
-                                f"""
-                                <div class="card">
-                                    <div class="card-title">TU:</div>
-                                    <div class="card-value">{dados['TU']}</div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                        f"""
+                        <div style="
+                            background-color:{CARD_BG};
+                            border:1px solid {BORDER};
+                            border-radius:10px;
+                            padding:14px;
+                            text-align:center;
+                        ">
+                            <div style="font-size:12px;color:{MUTED};font-weight:600;">
+                                TU:
+                            </div>
+                            <div style="font-size:22px;font-weight:800;color:{TEXT};">
+                                {dados['TU']}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                        )
                     st.write("---")
 
             resumo_tela164()
@@ -1390,7 +1602,7 @@ if st.button("Executar função"):
                         textposition="top center",
                         name="TRKV_MAX_Cunha",
                         marker=dict(size=7),
-                        line=dict(width=2)
+                        line=dict(color = PRIMARY, width=2)
                     ))
 
                     # -------------------------
@@ -1400,7 +1612,7 @@ if st.button("Executar função"):
                         x=df_trkv_trated["Data"],
                         y=y_pred,
                         mode="lines",
-                        line=dict(width=2, dash="dash", color="#A52BE3"),
+                        line=dict(width=2, dash="dash", color=SUCCESS),
                         name=f"Regressão Linear (slope={slope:.4f})"
                     ))
 
@@ -1438,27 +1650,34 @@ if st.button("Executar função"):
                         x=df_trkv_trated["Data"],
                         y=df_trkv_trated['Alarme'],
                         mode="lines",
-                        line=dict(color="red", width=2, dash="dash"),
+                        line=dict(color=DANGER, width=2, dash="dash"),
                         name=f"Alarme em {label}"
                     ))
                     # Layout
                     fig_trkv.update_layout(
-                        title="TRKV - Regressão + Projeção Futura",
+                        #title="TRKV - Regressão + Projeção Futura",
                         xaxis_title="Data",
                         yaxis_title="Valor",
                         template="plotly_white",
                         height=420,
                         margin=dict(t=60, r=30, b=110, l=60),  # MAIS espaço embaixo p/ a legenda
+                        # legend=dict(
+                        #         orientation="h",   # legenda horizontal
+                        #         x=0,               # começa na esquerda
+                        #         y=-0.22,           # coloca a legenda abaixo da área do gráfico
+                        #         xanchor="left",
+                        #         yanchor="top",
+                        #         traceorder="normal",
+                        #         bgcolor="rgba(0,0,0,0)",  # sem fundo
+                        #         font=dict(size=12)
+                        #     )
                         legend=dict(
-                                orientation="h",   # legenda horizontal
-                                x=0,               # começa na esquerda
-                                y=-0.22,           # coloca a legenda abaixo da área do gráfico
-                                xanchor="left",
-                                yanchor="top",
-                                traceorder="normal",
-                                bgcolor="rgba(0,0,0,0)",  # sem fundo
-                                font=dict(size=12)
-                            )
+                            orientation="h",      # legenda horizontal
+                            yanchor="bottom",
+                            y=1.02,               # um pouco acima do gráfico
+                            xanchor="center",
+                            x=0.5                 # centralizado
+                        )
 
                     )
 
@@ -1486,7 +1705,7 @@ if st.button("Executar função"):
                         textposition="top center",
                         name="Maior_Impacto_kN",
                         marker=dict(size=7),
-                        line=dict(width=2)
+                        line=dict(color = PRIMARY, width=2)
                     ))
 
                     # Linha de limite
@@ -1494,27 +1713,24 @@ if st.button("Executar função"):
                         x=df_wcm_trated["Data"],
                         y=df_wcm_trated["Alarme"],
                         mode="lines",
-                        name="Alarme 200 kN",
-                        line=dict(color="red", width=2, dash="dash")
+                        name="Alarme = 210 kN",
+                        line=dict(color=DANGER, width=2, dash="dash")
                     ))
 
                     fig_wcm.update_layout(
-                        title="WCM",
+                        #title="WCM",
                         xaxis_title="Data",
                         yaxis_title="Valor",
                         template="plotly_white",
                         height=420,
                         margin=dict(t=60, r=30, b=110, l=60),  # MAIS espaço embaixo p/ a legenda
                         legend=dict(
-                                orientation="h",   # legenda horizontal
-                                x=0,               # começa na esquerda
-                                y=-0.22,           # coloca a legenda abaixo da área do gráfico
-                                xanchor="left",
-                                yanchor="top",
-                                traceorder="normal",
-                                bgcolor="rgba(0,0,0,0)",  # sem fundo
-                                font=dict(size=12)
-                            )
+                            orientation="h",      # legenda horizontal
+                            yanchor="bottom",
+                            y=1.02,               # um pouco acima do gráfico
+                            xanchor="center",
+                            x=0.5                 # centralizado
+                        )
                     )
 
                     #fig_wcm.update_yaxes(range=[0, 300])
@@ -1542,7 +1758,7 @@ if st.button("Executar função"):
                         textposition="top center",
                         name="max_valor_mod_pd",
                         marker=dict(size=7),
-                        line=dict(width=2)
+                        line=dict(color = PRIMARY, width=2)
                     ))
 
                     # Linha de limite
@@ -1551,7 +1767,7 @@ if st.button("Executar função"):
                         y=df_TBOGI_trated["Alarme"],
                         mode="lines",
                         name="Alarme 10 ",
-                        line=dict(color="red", width=2, dash="dash")
+                        line=dict(color=DANGER, width=2, dash="dash")
                     ))
 
                     fig_TBOGI.update_layout(
@@ -1569,11 +1785,12 @@ if st.button("Executar função"):
                 # =========================
                 # STREAMLIT LAYOUT
                 # =========================
-
+                st.divider()
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    st.subheader("TRKV Cunha Máximo Passagem (mm)")
+                    # st.subheader("TRKV Cunha Máximo Passagem (mm)")
+                    st.markdown("<div class='section-title'>TRKV Cunha Máximo Passagem</div>", unsafe_allow_html=True)
                     MAP_WEDGE = {
                         2: "Ride Control",
                         3: "Barber",
@@ -1590,11 +1807,11 @@ if st.button("Executar função"):
                         # int() se o dtype vier float
                         label = MAP_WEDGE.get(int(code), "inválido")
 
-                    st.markdown(f'Tipo de Truque:  **{label}**')
-                    fig_trkv.update_layout(
-                        # legenda horizontal abaixo do gráfico
-                        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-                    )
+                    st.markdown(f'Tipo de Truque:  **{label}** | Regressão + projeção futura')
+                    # fig_trkv.update_layout(
+                    #     # legenda horizontal abaixo do gráfico
+                    #     legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+                    # )
                     st.plotly_chart(fig_trkv, width="stretch",
                                     key="plot_trkv")
                     # st.markdown(f'Modelo de cunha {df_trkv["WedgeTypeCode"][0]}')
@@ -1603,19 +1820,53 @@ if st.button("Executar função"):
                     **MAE:** `{mae:.4f}`
                     **RMSE:** `{rmse:.4f}`
                     """)
+
                     st.dataframe(df_trkv_trated.sort_values(
-                        by="Data", ascending=False).reset_index(drop=True))
+                        by="Data", ascending=False).reset_index(drop=True), hide_index = True)
+                    # st.dataframe(df_trkv_trated.sort_values(
+                    #     by="Data", ascending=False).reset_index(drop=True), hide_index = True)
+                    
+                    # limite = df_trkv_trated['Alarme'].dropna().min()
+
+                    # colunas = ["Data", "TRKV_MAX_Cunha", "STATUS_out"]
+
+                    # df_plot = (
+                    #     df_trkv_trated[colunas]
+                    #     .sort_values(by="Data", ascending=False)
+                    #     .reset_index(drop=True)
+                    # )
+
+                    # df_plot["TRKV_MAX_Cunha"] = pd.to_numeric(
+                    #     df_plot["TRKV_MAX_Cunha"], errors="coerce"
+                    # )
+
+                    # styled_df = df_plot.style.map(
+                    #     lambda v: "background-color: #ffcccc"
+                    #     if pd.notna(v) and v > limite else "",
+                    #     subset=["TRKV_MAX_Cunha"]
+                    # )
+
+                    # st.dataframe(styled_df, hide_index=True)
+
+                    # st.dataframe(df_trkv_trated.sort_values(
+                    #     by="Data", ascending=False).reset_index(drop=True), hide_index = True)
 
                 with col2:
-                    st.subheader("WCM Maior Impacto (kN)")
+                    # st.subheader("WCM - Maior Impacto (kN)")
+                    st.markdown("<div class='section-title'>WCM - Maior Impacto</div>", unsafe_allow_html=True)
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.write(" ")
                     #st.write(" ")
                     #st.write(" ")
-                    fig_wcm.update_layout(
-                        # legenda horizontal abaixo do gráfico
-                        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-                    )
+                    # fig_wcm.update_layout(
+                    #     # legenda horizontal abaixo do gráfico
+                    #     legend=dict(
+                    #         orientation="h",      # legenda horizontal
+                    #         yanchor="bottom",
+                    #         y=1.02,               # um pouco acima do gráfico
+                    #         xanchor="center",
+                    #         x=0.5                 # centralizado
+                    #     ))
                     st.plotly_chart(fig_wcm, width="stretch", key="plot_wcm")
                     st.markdown(f"""
                     **Alarme Baixo:** `-`
@@ -1623,12 +1874,13 @@ if st.button("Executar função"):
                     **Alarme Alto:** `-`
                     """)
                     st.dataframe(df_wcm_trated.sort_values(
-                        by="Data", ascending=False).reset_index(drop=True))
+                        by="Data", ascending=False).reset_index(drop=True), hide_index = True)
+
 
                 col2_1, col2_2 = st.columns(2)
 
                 with col2_1:
-                    st.subheader("TBOGI Módulo Max")
+                    st.subheader("TBOGI Módulo Max ()")
                     fig_TBOGI.update_layout(
                         # legenda horizontal abaixo do gráfico
                         legend=dict(orientation="h", yanchor="bottom", y=-0.3)
@@ -1636,7 +1888,7 @@ if st.button("Executar função"):
                     st.plotly_chart(
                         fig_TBOGI, width="stretch", key="plot_tbogi")
                     st.dataframe(df_TBOGI_trated.sort_values(
-                        by="Data", ascending=False).reset_index(drop=True))
+                        by="Data", ascending=False).reset_index(drop=True), hide_index = True)
 
                 with col2_2:
                     st.subheader("Detector Acústico")
@@ -1649,7 +1901,31 @@ if st.button("Executar função"):
             except Exception as e:
                 print(f"Erro ao plotar gráficos Waysides: {e}")
 
-            st.write("---")
+            st.divider()
+
+            # st.divider()
+
+            # st.markdown("<div class='section-title'>Dados do censo</div>", unsafe_allow_html=True)
+            # st.dataframe(df_censo, hide_index=True)
+
+            # st.divider()
+
+            # st.markdown("<div class='section-title'>Tarefas de manutenção</div>", unsafe_allow_html=True)
+            # df_SAT_TAREFAS_full = df_SAT_TAREFAS_full.drop(['IDTAREFA', 'DH_CRIACAO', 'UNAME_CRIACAO', 'ID', 
+            #                     'DHFIM','EQUNR', 'MODELO', 'IDORDEMSERVICOSTATUS_ATUAL', 'TEMPO_PADRAO',
+            #                     'HH_APLICADO', 'ID_TAREFA', 'NOME','data_sincronizacao'],axis=1)
+            # ordem = ['NUMDOC','dt_inicio_trated', 'dt_fim_trated','Sistema','DESCRICAO_TAREFA', 'DESCRICAO_ECP','Status','OBS_ATUAL']
+            # df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[ordem]
+            # df_SAT_TAREFAS_full = df_SAT_TAREFAS_full.rename(columns={
+            #     'NUMDOC': 'Número Doc.',
+            #     'dt_inicio_trated': 'Data de abertura',
+            #     'dt_fim_trated': 'Data de conclusão',
+            #     'DESCRICAO_TAREFA': 'Descrição da tarefa',
+            #     'DESCRICAO_ECP': 'Escopo',
+            #     'OBS_ATUAL': 'Obs.'
+            # })
+            # st.dataframe(df_SAT_TAREFAS_full, hide_index=True)
+
         # ------------------------
             if not df_SAT_TAREFAS_full.empty:
                 df_SAT_TAREFAS_full = df_SAT_TAREFAS_full[[
