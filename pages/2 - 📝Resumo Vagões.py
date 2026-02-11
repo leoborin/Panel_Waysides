@@ -195,7 +195,7 @@ def busca_dados(vagao):
         if '_id' in df.columns:
             df.drop('_id', axis=1, inplace=True)
 
-        df = df[df['ELIMINADO']] != "X"
+        #df = df[df['ELIMINADO']] != "X"
 
         return df
 
@@ -491,7 +491,7 @@ def concatenar_dados_trkv_z851(df_z851, df_trkv):
     print("Iniciando tratamento TRKV...")
     print(df_trkv.columns)
     print(df_trkv)
-
+    st.dataframe(df_z851)
     df_trkv["max_valor"] = df_trkv[["A#L_1", "A#L_2", "A#R_1",
                                     "A#R_2", "B#L_1", "B#L_2", "B#R_1", "B#R_2"]].max(axis=1)
     df_trkv = df_trkv[(df_trkv["max_valor"] != 0) &
@@ -1021,8 +1021,8 @@ try:
         'Separador_Status':'Separador_Status'
         }, inplace=True)
 
-
-
+    #df_filtrado_com_link = df_filtrado_com_link[df_filtrado_com_link['ELIMINADO'] != 'X']
+    #st.dataframe(df_filtrado_com_link)
     # Reordena: link primeiro, esconde EQUNR original
     colunas = ['EQUNR_Link'] + [col for col in df_filtrado_com_link.columns if col !=
                                 'EQUNR' and col != 'EQUNR_Link']
