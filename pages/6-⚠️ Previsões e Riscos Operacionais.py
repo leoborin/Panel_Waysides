@@ -228,7 +228,7 @@ df_tbogi = dfs["df_tbogi"]
 
 # SHAREPOINT | Enriquecimento – Sistema da Falha
 df_avarias = pd.read_excel(
-    r'Panel_Waysides\Base_avarias.xlsx',
+    r'Base_avarias.xlsx',
     engine='openpyxl'
 )
 
