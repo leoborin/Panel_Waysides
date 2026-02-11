@@ -170,11 +170,11 @@ df_z1568 = dfs["df_z1568"]
 
 
 
-# SHAREPOINT | Enriquecimento – Sistema da Falha
-df_avarias = pd.read_excel(
-    r'Panel_Waysides\Base_avarias.xlsx',
-    engine='openpyxl'
-)
+# # SHAREPOINT | Enriquecimento – Sistema da Falha
+# df_avarias = pd.read_excel(
+#     r'Panel_Waysides\Base_avarias.xlsx',
+#     engine='openpyxl'
+# )
 
 # MONGO DB | Dados do censo
 # def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
