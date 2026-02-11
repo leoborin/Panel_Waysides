@@ -172,7 +172,7 @@ df_z1568 = dfs["df_z1568"]
 
 # SHAREPOINT | Enriquecimento – Sistema da Falha
 df_avarias = pd.read_excel(
-    r'C:\Projeto\Panel_Waysides\Base_avarias.xlsx',
+    r'Panel_Waysides\Base_avarias.xlsx',
     engine='openpyxl'
 )
 
