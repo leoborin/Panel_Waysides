@@ -254,8 +254,10 @@ def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
         return pd.DataFrame()  # DataFrame vazio
     
 # Dados do Mongo
-MONGO_URI_PRD = 'mongodb+srv://inteligencia_dados:AR5VxIUwpWIt3VlK@rumo-dev.eqds1.mongodb.net/?authSource=admin'
-DB_NAME_PRD = 'inteligencia_MR'
+# MONGO_URI_PRD = 'mongodb+srv://inteligencia_dados:AR5VxIUwpWIt3VlK@rumo-dev.eqds1.mongodb.net/?authSource=admin'
+# DB_NAME_PRD = 'inteligencia_MR'
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 
 # Importação dos dados do Truck View
 df_trkv = function_to_get_data(
