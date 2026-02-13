@@ -219,7 +219,7 @@ for arquivo in arquivos_parquet:
 
 # DataFrames individuais
 df_164 = dfs["df_164"]
-df_trkv = dfs["df_trkv"]
+#df_trkv = dfs["df_trkv"]
 df_WCM = dfs["df_WCM"]
 df_z369 = dfs["df_z369"]
 df_z851 = dfs["df_z851"]
@@ -228,7 +228,7 @@ df_tbogi = dfs["df_tbogi"]
 
 # SHAREPOINT | Enriquecimento – Sistema da Falha
 df_avarias = pd.read_excel(
-    r'Panel_Waysides\Base_avarias.xlsx',
+    r'Base_avarias.xlsx',
     engine='openpyxl'
 )
 
@@ -237,6 +237,36 @@ np.random.seed(42)
 dates = pd.date_range(datetime.today() - timedelta(days=180), periods=26, freq="7D")
 df_dispon = pd.DataFrame({"data": dates, "real": np.clip(240 + np.cumsum(np.random.randn(len(dates))), 230, 250), "contratada": np.full(len(dates), 243)})
 
+# IMPORTANDO DADOS DO TRKV PROVISORIAMENTE
+def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
+    client = MongoClient(MONGO_URI_PRD)
+    db = client[DB_NAME_PRD]
+    collection = db[COLLECTION_NAME]
+    # Buscar últimos 5 documentos ordenados por timestamp decrescente
+    docs = list(collection.find().sort("timestamp", -1))
+    if docs:
+        # Converter lista de documentos para DataFrame, removendo coluna _id
+        df = pd.DataFrame(docs).drop(columns=['_id'], errors='ignore')
+        if 'json_documents' in df.columns:
+            df['json_documents'] = df['json_documents'].fillna('').astype(str)
+        return df
+    else:
+        return pd.DataFrame()  # DataFrame vazio
+    
+# Dados do Mongo
+MONGO_URI_PRD = 'mongodb+srv://inteligencia_dados:AR5VxIUwpWIt3VlK@rumo-dev.eqds1.mongodb.net/?authSource=admin'
+DB_NAME_PRD = 'inteligencia_MR'
+
+# Importação dos dados do Truck View
+df_trkv = function_to_get_data(
+            MONGO_URI_PRD, DB_NAME_PRD, 'TRKV_treated'#,
+            #query={
+            #    'tipo_do_veículo': {
+            #        '$not': {
+            #            '$regex': 'L'
+            #        }
+            #    }}
+)
 #--------------------------------------------------------------------------------
 ## Filtro Global – MODELO
 #--------------------------------------------------------------------------------
@@ -489,7 +519,12 @@ for aba, tp in zip(abas, tipos_nota):
                 hovermode='x unified'
             )
 
-            st.plotly_chart(fig_area, use_container_width=True)
+            # st.plotly_chart(fig_area, use_container_width=True)
+            st.plotly_chart(
+                fig_area,
+                use_container_width=True,
+                key=f"fig_area_{tp}"
+            )
 
         # ===== Heatmap =====
         with col2:
@@ -534,10 +569,201 @@ for aba, tp in zip(abas, tipos_nota):
             )
 
             fig_heat.update_yaxes(autorange='reversed')
-            st.plotly_chart(fig_heat, use_container_width=True)
+            # st.plotly_chart(fig_heat, use_container_width=True)
+            st.plotly_chart(
+                fig_heat,
+                use_container_width=True,
+                key=f"fig_heat_{tp}_{sistema}"
+            )
 
 st.divider()
 st.markdown("<div class='section-title'>Disponibilidade real x contratada</div>", unsafe_allow_html=True)
 # st.subheader("Disponibilidade real x contratada")
 
 st.plotly_chart(line_plot_real(df_dispon, "data", "real", "contratada", "", "Real", color=SUCCESS), use_container_width=True)
+
+# ----------------------------------------------------------------------------------------------------
+# HISTOGRAMA DE CUNHAS
+# ----------------------------------------------------------------------------------------------------
+# Função para tratar outliers
+def tratar_outliers_trkv(df):
+
+    """
+    Remove medições anômalas com base nas 3 últimas medições por key.
+
+    - Valor é outlier se:
+        valor > max_3 * 1.30
+        valor < min_3 * 0.70
+    """
+    df = df.fillna(0)                     
+    df["key"] = df["CarIDNumber"].astype(int)
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"],  errors="coerce")
+    df = df.sort_values(["key", "timestamp"])
+
+    # Cálculo da força máxima entre os 8 sensores
+    sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
+                "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
+
+    df["max_valor"] = df[sensores].max(axis=1)
+
+    
+    df["min_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).min().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    df["max_3"] = (
+        df.groupby("key")["max_valor"]
+        .rolling(3).max().shift(1)
+        .reset_index(level=0, drop=True)
+    )
+
+    # Regras ±30%
+    df["DESCARTAR"] = (
+        (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
+        (df["max_valor"] < df["min_3"] * (1-cof_Outlier)) |
+       ( df["max_valor"] == 0)
+    )
+
+    df["STATUS_out"] = df["DESCARTAR"].map(
+        {True: "DESCARTAR", False: "OK"})
+    return df
+
+cof_Outlier = 0.2
+df_TRKV_2 = tratar_outliers_trkv(df_trkv) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
+
+# Mapeamento de alarme de cunha
+MAP_WEDGE = {
+    2: 45,
+    3: 57,
+    4: 64,
+    5: 57,
+}
+df_TRKV_2['Alarme'] = (
+    df_TRKV_2['WedgeTypeCode']
+    .map(MAP_WEDGE)
+    .fillna("inválido")
+)
+
+# Mapeamento de tipo de truque
+MAP_TRUQUE = {
+    2: "Ride Control",
+    3: "Barber",
+    4: "Ride Master",
+    5: "Motion Control",
+}
+
+df_TRKV_2['Truque'] = (
+    df_TRKV_2['WedgeTypeCode']
+    .map(MAP_TRUQUE)
+    .fillna("inválido")
+)
+
+# Desconsiderar registros com STATUS_out = DESCARTAR (jogar outliers fora)
+df_TRKV_3 = df_TRKV_2[df_TRKV_2['STATUS_out'] == "OK"]
+
+# Desconsiderar registros com 'Header_TrainDirection' = N
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['Header_TrainDirection'] == "S"]
+
+# Desconsiderar registros com concatenatedCarID = 000000None ou 0000000nan
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedCarID'] != "000000None"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedCarID'] != "0000000nan"]
+
+# Jogar fora colunas desnecessárias
+cols_drop = [
+    'CarSequenceNumber','CarOrientation','CarType',
+    'TruckFields','TruckIDs','TruckValues','timestr',
+    'Header_TrainSequenceNumber','data_sincronizacao',
+    'max_valor','min_3','max_3'
+]
+df_TRKV_3 = df_TRKV_3.drop(columns=cols_drop, errors='ignore')
+
+# Últimos tratamentos do df_TRKV
+# -----------------------------
+df_TRKV_3["concatenatedCarID"] = df_TRKV_3["concatenatedCarID"].astype(str)
+df_TRKV_3["timestamp"] = pd.to_datetime(df_TRKV_3["timestamp"], errors="coerce")
+df_TRKV_3["Alarme"] = pd.to_numeric(
+    df_TRKV_3["Alarme"],
+    errors="coerce"
+).astype("float64")
+
+## Pegar a data da última RR no df_z851 e fazer um merge com o df_TRKV_3
+
+# Preparar dataframe dimensão (df_z851)
+df_z851["concatenatedCarID"] = df_z851["EQUNR"]
+df_z851["ULTIMA_RR"] = pd.to_datetime(df_z851["ULTIMA_RR"], errors="coerce")
+
+df_dim = df_z851[["concatenatedCarID", "ULTIMA_RR"]].drop_duplicates()
+
+# Juntar dimensão com fatos
+df_TRKV_4 = df_TRKV_3.merge(df_dim, on="concatenatedCarID", how="left")
+
+# Filtrar somente registros após última RG
+# -----------------------------
+df_TRKV_4 = df_TRKV_4[df_TRKV_4["timestamp"] >= df_TRKV_4["ULTIMA_RR"]]
+
+#Preparando histograma
+colunas_cunha = [
+    'A#L_1', 'A#L_2', 'A#R_1', 'A#R_2',
+    'B#L_1', 'B#L_2', 'B#R_1', 'B#R_2'
+]
+
+# 1️⃣ Substituir zeros por NaN
+df = df_TRKV_4.copy()
+df[colunas_cunha] = df[colunas_cunha].replace(0, np.nan)
+
+# 2️⃣ Média das cunhas por vagão + modelo do truque
+df_media = (
+    df.groupby('concatenatedCarID')
+      .agg({**{c: 'mean' for c in colunas_cunha},
+            'Truque': lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan})
+      .reset_index()
+)
+
+# 3️⃣ Maior média entre as 8 cunhas
+df_media['altura_cunha_max_media'] = df_media[colunas_cunha].max(axis=1)
+
+# 4️⃣ Resultado final
+histograma = df_media[['concatenatedCarID', 'Truque', 'altura_cunha_max_media']]
+
+# Adicionando modelo do vagão
+df_dim2 = df_z851[["concatenatedCarID", "MODELO"]].drop_duplicates()
+histograma2 = histograma.merge(df_dim2, on="concatenatedCarID", how="left")
+
+# Limites por truque
+limites = {
+    "Ride Control": 45,
+    "Barber": 57,
+    "Ride Master": 64,
+    "Motion Control": 57
+}
+
+# ---- FILTRO ----
+truques = sorted(histograma2["Truque"].dropna().unique())
+truque_sel = st.selectbox("Filtrar tipo de truque:", ["Todos"] + list(truques))
+
+if truque_sel != "Todos":
+    df_plot = histograma2[histograma2["Truque"] == truque_sel]
+else:
+    df_plot = histograma2.copy()
+
+# ---- HISTOGRAMA ----
+fig = px.histogram(
+    df_plot,
+    x="altura_cunha_max_media",
+    nbins=30,
+    title="Histograma de Altura de Cunha"
+)
+
+# ---- LINHA DE LIMITE ----
+if truque_sel in limites:
+    fig.add_vline(
+        x=limites[truque_sel],
+        line_dash="dash",
+        annotation_text=f"Limite {limites[truque_sel]}",
+        annotation_position="top"
+    )
+
+st.plotly_chart(fig, use_container_width=True)

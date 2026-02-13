@@ -166,7 +166,7 @@ df_trkv = dfs["df_trkv"]
 df_z369 = dfs["df_z369"]
 df_z851 = dfs["df_z851"]
 df_z1568 = dfs["df_z1568"]
-#df_tbogi = dfs["df_tbogi"]
+df_tbogi = dfs["df_tbogi"]
 
 
 
@@ -233,10 +233,15 @@ def function_to_get_data(
     return pd.DataFrame()
 
 
-MONGO_URI_PRD = 'mongodb+srv://inteligencia_dados:AR5VxIUwpWIt3VlK@rumo-dev.eqds1.mongodb.net/?authSource=admin'
-DB_NAME_PRD = 'inteligencia_MR'
-MONGO_URI_DEV = 'mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin'
-DB_NAME_DEV = 'supervisorio'
+# MONGO_URI_PRD = 'mongodb+srv://inteligencia_dados:AR5VxIUwpWIt3VlK@rumo-dev.eqds1.mongodb.net/?authSource=admin'
+# DB_NAME_PRD = 'inteligencia_MR'
+# MONGO_URI_DEV = 'mongodb+srv://int_dados:e7bUe2bXbKDu3Xzr@rumo-dev2.hbdcrld.mongodb.net/?authSource=admin'
+# DB_NAME_DEV = 'supervisorio'
+
+MONGO_URI_DEV = st.secrets.database_dev.MONGO_URI
+DB_NAME_DEV = st.secrets.database_dev.DB_NAME
+MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
+DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 df_censo = function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, "SAP_censo_trated")
 df_WCM = function_to_get_data(
             MONGO_URI_PRD, DB_NAME_PRD, 'WCM_treated'#,
@@ -265,21 +270,30 @@ def tratar_nome(col):
 
 # --- Função para tratar dataframes ----
 def tratar_dfs(df_WCM, df_z369, df_trkv, df_tbogi):
-    def tratar_tbogi(df_tbogi):
-        if "tp" in df_tbogi.columns:
-                df_tbogi["valor_mod_pd"] = df_tbogi["tp"].abs()
-        else:
-            print(
-                "TBOGI: coluna 'tp' não encontrada — adicionando valor_mod_pd = NaN")
-            df_tbogi["valor_mod_pd"] = np.nan
-        df_tbogi_treated = (
-            df_tbogi.groupby("timestamp_received", as_index=False)[
+    # def tratar_tbogi(df_tbogi):
+    #     if "tp" in df_tbogi.columns:
+    #             df_tbogi["valor_mod_pd"] = df_tbogi["tp"].abs()
+    #     else:
+    #         print(
+    #             "TBOGI: coluna 'tp' não encontrada — adicionando valor_mod_pd = NaN")
+    #         df_tbogi["valor_mod_pd"] = np.nan
+    #     df_tbogi_treated = (
+    #         df_tbogi.groupby("timestamp_received", as_index=False)[
+    #             "valor_mod_pd"]
+    #         .max()
+    #         .rename(columns={"valor_mod_pd": "max_valor_mod_pd"})
+    #         .sort_values(by="timestamp_received")
+    #     )
+    #     return df_tbogi_treated
+    def tratar_tbogi(df_busca_TBOGI):
+        df_resumo = (
+            df_busca_TBOGI.groupby("timestamp_received", as_index=False)[
                 "valor_mod_pd"]
             .max()
             .rename(columns={"valor_mod_pd": "max_valor_mod_pd"})
             .sort_values(by="timestamp_received")
         )
-        return df_tbogi_treated
+        return df_resumo
 
     try:
         df_TBOGI_trated = tratar_tbogi(df_tbogi)
@@ -413,12 +427,12 @@ if st.button("Executar função"):
         vg_entrada = vg_entrada.upper()
         num_vg = vg_entrada[:7].lstrip('0')
 
-        df_tbogi = function_to_get_data(
-            MONGO_URI_DEV, DB_NAME_DEV, 'tbogi_treated',
-            query={
-                'car_num': num_vg
-            }
-        )
+        # df_tbogi = function_to_get_data(
+        #     MONGO_URI_DEV, DB_NAME_DEV, 'tbogi_treated',
+        #     query={
+        #         'car_num': num_vg
+        #     }
+        # )
 
         df_trkv_trated, df_wcm_trated, df_timeline_z369, df_z369_trated, df_TBOGI_trated = tratar_dfs(
             df_WCM, df_z369, df_trkv, df_tbogi)
