@@ -756,7 +756,7 @@ fig = px.histogram(
     df_plot,
     x="altura_cunha_max_media",
     nbins=30,
-    title="Histograma de Altura de Cunha"
+    title="Histograma - Altura de Cunha"
 )
 
 # ---- LINHA DE LIMITE ----
