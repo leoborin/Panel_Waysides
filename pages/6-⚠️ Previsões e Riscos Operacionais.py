@@ -219,7 +219,7 @@ for arquivo in arquivos_parquet:
 
 # DataFrames individuais
 df_164 = dfs["df_164"]
-#df_trkv = dfs["df_trkv"]
+df_trkv = dfs["df_trkv"]
 df_WCM = dfs["df_WCM"]
 df_z369 = dfs["df_z369"]
 df_z851 = dfs["df_z851"]
@@ -260,21 +260,36 @@ MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
 DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 
 # Importação dos dados do Truck View
-df_trkv = function_to_get_data(
-            MONGO_URI_PRD, DB_NAME_PRD, 'TRKV_treated'#,
-            #query={
-            #    'tipo_do_veículo': {
-            #        '$not': {
-            #            '$regex': 'L'
-            #        }
-            #    }}
-)
+# df_trkv = function_to_get_data(
+#             MONGO_URI_PRD, DB_NAME_PRD, 'TRKV_treated'#,
+#             #query={
+#             #    'tipo_do_veículo': {
+#             #        '$not': {
+#             #            '$regex': 'L'
+#             #        }
+#             #    }}
+# )
 #--------------------------------------------------------------------------------
 ## Filtro Global – MODELO
 #--------------------------------------------------------------------------------
+modelos_validos = [
+    'GRANELEIROS',
+    'TANQUES',
+    'FECHADOS',
+    'PLATAFORMAS',
+    'GÔNDOLAS BAUXITA'
+]
+
+vgs_validos = (
+    df_z851.loc[df_z851['MODELO'].isin(modelos_validos), 'EQUNR']
+    .astype(str)
+    .unique()
+)
+
 df_z369['ATIVO'] = df_z369['ATIVO'].astype(str).str.zfill(10)
 
-modelos = sorted(df_z851['MODELO'].dropna().unique())
+# modelos = sorted(df_z851['MODELO'].dropna().unique())
+modelos = modelos_validos
 
 # modelo_sel = st.multiselect(
 #     "Modelo do vagão",
@@ -716,56 +731,233 @@ colunas_cunha = [
 df = df_TRKV_4.copy()
 df[colunas_cunha] = df[colunas_cunha].replace(0, np.nan)
 
-# 2️⃣ Média das cunhas por vagão + modelo do truque
-df_media = (
-    df.groupby('concatenatedCarID')
-      .agg({**{c: 'mean' for c in colunas_cunha},
-            'Truque': lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan})
-      .reset_index()
-)
+# # 2️⃣ Média das cunhas por vagão + modelo do truque
+# df_media = (
+#     df.groupby('concatenatedCarID')
+#       .agg({**{c: 'mean' for c in colunas_cunha},
+#             'Truque': lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan})
+#       .reset_index()
+# )
+def calcular_media_cunhas(df, colunas_cunha, timestamp_col='timestamp'):
+    """
+    Calcula, para cada vagão:
+    - média dos 2 maiores valores entre os 5 registros mais recentes
+      de cada coluna de cunha (ignorando zeros)
+    - modelo de truque mais frequente.
+
+    Parâmetros:
+        df : DataFrame original
+        colunas_cunha : lista com nomes das colunas de cunha
+        timestamp_col : nome da coluna de data/hora (default='timestamp')
+
+    Retorna:
+        DataFrame com médias das cunhas + Truque predominante.
+    """
+
+    # 1) Formato longo (cunhas em linhas)
+    df_long = df.melt(
+        id_vars=['concatenatedCarID', timestamp_col, 'Truque'],
+        value_vars=colunas_cunha,
+        var_name='cunha',
+        value_name='valor'
+    )
+
+    # 2) Remover zeros
+    df_long = df_long[df_long['valor'] != 0]
+
+    # 3) Ordenar por mais recente
+    df_long = df_long.sort_values(
+        ['concatenatedCarID', 'cunha', timestamp_col],
+        ascending=[True, True, False]
+    )
+
+    # 4) Últimos 5 registros por vagão/cunha
+    ult5 = df_long.groupby(
+        ['concatenatedCarID', 'cunha'],
+        group_keys=False
+    ).head(5)
+
+    # 5) Média dos 2 maiores
+    media = (
+        ult5.groupby(['concatenatedCarID', 'cunha'])['valor']
+            .apply(lambda x: x.nlargest(2).mean())
+            .unstack('cunha')
+            .reset_index()
+    )
+
+    # 6) Truque mais frequente
+    truque = (
+        df.groupby('concatenatedCarID')['Truque']
+          .agg(lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan)
+          .reset_index()
+    )
+
+    # 7) Merge final
+    return media.merge(truque, on='concatenatedCarID', how='left')
+
+df_media = calcular_media_cunhas(df, colunas_cunha)
 
 # 3️⃣ Maior média entre as 8 cunhas
 df_media['altura_cunha_max_media'] = df_media[colunas_cunha].max(axis=1)
 
-# 4️⃣ Resultado final
-histograma = df_media[['concatenatedCarID', 'Truque', 'altura_cunha_max_media']]
-
-# Adicionando modelo do vagão
-df_dim2 = df_z851[["concatenatedCarID", "MODELO"]].drop_duplicates()
-histograma2 = histograma.merge(df_dim2, on="concatenatedCarID", how="left")
-
-# Limites por truque
-limites = {
-    "Ride Control": 45,
-    "Barber": 57,
-    "Ride Master": 64,
-    "Motion Control": 57
+dfs_por_truque = {
+    truque: grupo.reset_index(drop=True)
+    for truque, grupo in df_media.groupby('Truque')
 }
 
-# ---- FILTRO ----
-truques = sorted(histograma2["Truque"].dropna().unique())
-truque_sel = st.selectbox("Filtrar tipo de truque:", ["Todos"] + list(truques))
+# Gerando um dataframe para cada tipo de truque
+df_RC = dfs_por_truque['Ride Control']
+df_RM = dfs_por_truque['Ride Master']
 
-if truque_sel != "Todos":
-    df_plot = histograma2[histograma2["Truque"] == truque_sel]
-else:
-    df_plot = histograma2.copy()
-
-# ---- HISTOGRAMA ----
-fig = px.histogram(
-    df_plot,
-    x="altura_cunha_max_media",
-    nbins=30,
-    title="Histograma - Altura de Cunha"
+# Fazendo os bins de cada tipo de truque
+bins_RM = [20, 30, 35, 40, 45, 50, 55, 57, 58, 59, 60, 61, 62, 63, 64, 100]
+labels_RM = [f"{bins_RM[i]}-{bins_RM[i+1]}" for i in range(len(bins_RM)-1)]
+df_RM["bin"] = pd.cut(
+    df_RM["altura_cunha_max_media"],
+    bins=bins_RM,
+    labels=labels_RM,
+    include_lowest=True
+)
+bins_RC = [15, 20, 25, 30, 35, 40, 41, 42, 43, 44, 45, 100]
+labels_RC = [f"{bins_RC[i]}-{bins_RC[i+1]}" for i in range(len(bins_RC)-1)]
+df_RC["bin"] = pd.cut(
+    df_RC["altura_cunha_max_media"],
+    bins=bins_RC,
+    labels=labels_RC,
+    include_lowest=True
 )
 
-# ---- LINHA DE LIMITE ----
-if truque_sel in limites:
-    fig.add_vline(
-        x=limites[truque_sel],
-        line_dash="dash",
-        annotation_text=f"Limite {limites[truque_sel]}",
-        annotation_position="top"
+fig_RC = px.histogram(
+    df_RC,
+    x="bin",
+    category_orders={"bin": df_RC["bin"].cat.categories},
+    title="Histograma - Altura Média Máx. de Cunha (Ride Control)"
+)
+# st.plotly_chart(fig_RM, use_container_width=True)
+# st.plotly_chart(fig_RC, use_container_width=True)
+
+def histograma_cunha_por_truque(
+    df,
+    bins,
+    labels,
+    bins_azul,
+    bins_amarelo,
+    bins_vermelho,
+    coluna_valor="altura_cunha_max_media",
+    titulo="Histograma de Cunha"
+):
+
+    # Criar coluna de bins
+    df = df.copy()
+    df["bin"] = pd.cut(
+        df[coluna_valor],
+        bins=bins,
+        labels=labels,
+        include_lowest=True
     )
 
-st.plotly_chart(fig, use_container_width=True)
+    # Classificação de cores
+    def classificar_cor(x):
+        if x in bins_azul:
+            return "Normal"
+        elif x in bins_amarelo:
+            return "Alerta"
+        elif x in bins_vermelho:
+            return "Crítico"
+        return "Outros"
+
+    df["faixa_cor"] = df["bin"].astype(str).apply(classificar_cor)
+
+    # Gráfico
+    fig = px.histogram(
+        df,
+        x="bin",
+        color="faixa_cor",
+        category_orders={"bin": labels},
+        color_discrete_map={
+            "Normal": PRIMARY,
+            "Alerta": WARNING,
+            "Crítico": DANGER
+        },
+        labels={
+            "bin": "Altura de cunha",
+            "count": "Quantidade de vagões"
+        },
+        title=titulo
+    )
+
+    return fig
+
+fig_RM = histograma_cunha_por_truque(
+    df_RM,
+    bins=bins_RM,
+    labels=labels_RM,
+    bins_azul=labels_RM[:7],
+    bins_amarelo=labels_RM[7:14],
+    bins_vermelho=[labels_RM[-1]],
+    titulo="Histograma - Ride Master"
+)
+
+fig_RC = histograma_cunha_por_truque(
+    df_RC,
+    bins=bins_RC,
+    labels=labels_RC,
+    bins_azul=labels_RC[:5],
+    bins_amarelo=labels_RC[5:10],
+    bins_vermelho=[labels_RC[-1]],
+    titulo="Histograma - Ride Control"
+)
+
+col1, col2 = st.columns(2)
+with col1:
+    fig_RM.update_layout(showlegend=False)
+    st.plotly_chart(fig_RM, use_container_width=True)
+    
+with col2:
+    fig_RC.update_layout(showlegend=False)
+    st.plotly_chart(fig_RC, use_container_width=True)
+    
+
+
+# # 4️⃣ Resultado final
+# histograma = df_media[['concatenatedCarID', 'Truque', 'altura_cunha_max_media']]
+
+# # Adicionando modelo do vagão
+# df_dim2 = df_z851[["concatenatedCarID", "MODELO"]].drop_duplicates()
+# histograma2 = histograma.merge(df_dim2, on="concatenatedCarID", how="left")
+
+# # Limites por truque
+# limites = {
+#     "Ride Control": 45,
+#     "Barber": 57,
+#     "Ride Master": 64,
+#     "Motion Control": 57
+# }
+
+# # ---- FILTRO ----
+# truques = sorted(histograma2["Truque"].dropna().unique())
+# truque_sel = st.selectbox("Filtrar tipo de truque:", ["Todos"] + list(truques))
+
+# if truque_sel != "Todos":
+#     df_plot = histograma2[histograma2["Truque"] == truque_sel]
+# else:
+#     df_plot = histograma2.copy()
+
+# # ---- HISTOGRAMA ----
+# fig = px.histogram(
+#     df_plot,
+#     x="altura_cunha_max_media",
+#     nbins=30,
+#     title="Histograma - Altura de Cunha"
+# )
+
+# # ---- LINHA DE LIMITE ----
+# if truque_sel in limites:
+#     fig.add_vline(
+#         x=limites[truque_sel],
+#         line_dash="dash",
+#         annotation_text=f"Limite {limites[truque_sel]}",
+#         annotation_position="top"
+#     )
+
+# st.plotly_chart(fig, use_container_width=True)
