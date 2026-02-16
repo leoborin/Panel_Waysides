@@ -315,6 +315,7 @@ vagoes_validos = (
     .unique()
 )
 
+df_trkv_f = df_trkv[df_trkv['concatenatedCarID'].isin(vagoes_validos)].copy()
 df_z369_f = df_z369[df_z369['ATIVO'].isin(vagoes_validos)].copy()
 df_z369_f['dt_abertura_trated'] = pd.to_datetime(df_z369_f['dt_abertura_trated'])
 df_z369_f = df_z369_f[df_z369_f['dt_abertura_trated'].dt.year <= 2100]
@@ -401,17 +402,17 @@ st.divider()
 # ===============================
 # SLA DE PÁTIOS
 # ===============================
-st.markdown("<div class='section-title'>SLA de pátios</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>SLA de pátios (DADOS SIMULADOS)</div>", unsafe_allow_html=True)
 
 g1, g2, g3, g4, g5, g6, g7, g8 = st.columns(8)
-g1.plotly_chart(semicircle_gauge("ZRO", 41, SUCCESS), use_container_width=True)
-g2.plotly_chart(semicircle_gauge("ZRX", 70, WARNING), use_container_width=True)
-g3.plotly_chart(semicircle_gauge("ZTO", 85, DANGER), use_container_width=True)
-g4.plotly_chart(semicircle_gauge("ZAR", 90, DANGER), use_container_width=True)
-g5.plotly_chart(semicircle_gauge("ZZZ", 57, SUCCESS), use_container_width=True)
-g6.plotly_chart(semicircle_gauge("TOM", 73, WARNING), use_container_width=True)
-g7.plotly_chart(semicircle_gauge("TRO", 68, SUCCESS), use_container_width=True)
-g8.plotly_chart(semicircle_gauge("PRV", 70, SUCCESS), use_container_width=True)
+g1.plotly_chart(semicircle_gauge("ZRO", 41, SUCCESS), width='stretch')
+g2.plotly_chart(semicircle_gauge("ZRX", 70, WARNING), width='stretch')
+g3.plotly_chart(semicircle_gauge("ZTO", 85, DANGER), width='stretch')
+g4.plotly_chart(semicircle_gauge("ZAR", 90, DANGER), width='stretch')
+g5.plotly_chart(semicircle_gauge("ZZZ", 57, SUCCESS), width='stretch')
+g6.plotly_chart(semicircle_gauge("TOM", 73, WARNING), width='stretch')
+g7.plotly_chart(semicircle_gauge("TRO", 68, SUCCESS), width='stretch')
+g8.plotly_chart(semicircle_gauge("PRV", 70, SUCCESS), width='stretch')
 
 st.divider()
 # ===============================
@@ -441,7 +442,7 @@ with col_l:
         height=300
     )
 
-    st.plotly_chart(fig_top5, use_container_width=True)
+    st.plotly_chart(fig_top5, width='stretch')
 
 # with col_r:
 #     st.markdown(
@@ -536,10 +537,10 @@ for aba, tp in zip(abas, tipos_nota):
                 hovermode='x unified'
             )
 
-            # st.plotly_chart(fig_area, use_container_width=True)
+            # st.plotly_chart(fig_area, width='stretch')
             st.plotly_chart(
                 fig_area,
-                use_container_width=True,
+                width='stretch',
                 key=f"fig_area_{tp}"
             )
 
@@ -586,18 +587,18 @@ for aba, tp in zip(abas, tipos_nota):
             )
 
             fig_heat.update_yaxes(autorange='reversed')
-            # st.plotly_chart(fig_heat, use_container_width=True)
+            # st.plotly_chart(fig_heat, width='stretch')
             st.plotly_chart(
                 fig_heat,
-                use_container_width=True,
+                width='stretch',
                 key=f"fig_heat_{tp}_{sistema}"
             )
 
 st.divider()
-st.markdown("<div class='section-title'>Disponibilidade real x contratada</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>Disponibilidade real x contratada (DADOS SIMULADOS)</div>", unsafe_allow_html=True)
 # st.subheader("Disponibilidade real x contratada")
 
-st.plotly_chart(line_plot_real(df_dispon, "data", "real", "contratada", "", "Real", color=SUCCESS), use_container_width=True)
+st.plotly_chart(line_plot_real(df_dispon, "data", "real", "contratada", "", "Real", color=SUCCESS), width='stretch')
 
 # ----------------------------------------------------------------------------------------------------
 # HISTOGRAMA DE CUNHAS
@@ -649,7 +650,7 @@ def tratar_outliers_trkv(df):
     return df
 
 cof_Outlier = 0.2
-df_TRKV_2 = tratar_outliers_trkv(df_trkv) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
+df_TRKV_2 = tratar_outliers_trkv(df_trkv_f) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
 
 # Mapeamento de alarme de cunha
 MAP_WEDGE = {
@@ -678,8 +679,11 @@ df_TRKV_2['Truque'] = (
     .fillna("inválido")
 )
 
+# Desconsiderar registros de truques que não são Ride Control ou Ride Master
+df_TRKV_3 = df_TRKV_2[df_TRKV_2["Truque"].isin(["Ride Control", "Ride Master"])]
+
 # Desconsiderar registros com STATUS_out = DESCARTAR (jogar outliers fora)
-df_TRKV_3 = df_TRKV_2[df_TRKV_2['STATUS_out'] == "OK"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['STATUS_out'] == "OK"]
 
 # Desconsiderar registros com 'Header_TrainDirection' = N
 df_TRKV_3 = df_TRKV_3[df_TRKV_3['Header_TrainDirection'] == "S"]
@@ -818,7 +822,7 @@ df_RM["bin"] = pd.cut(
     labels=labels_RM,
     include_lowest=True
 )
-bins_RC = [15, 20, 25, 30, 35, 40, 41, 42, 43, 44, 45, 100]
+bins_RC = [15, 20, 25, 30, 35, 40, 41, 42, 43, 44, 45, 105]
 labels_RC = [f"{bins_RC[i]}-{bins_RC[i+1]}" for i in range(len(bins_RC)-1)]
 df_RC["bin"] = pd.cut(
     df_RC["altura_cunha_max_media"],
@@ -827,14 +831,9 @@ df_RC["bin"] = pd.cut(
     include_lowest=True
 )
 
-fig_RC = px.histogram(
-    df_RC,
-    x="bin",
-    category_orders={"bin": df_RC["bin"].cat.categories},
-    title="Histograma - Altura Média Máx. de Cunha (Ride Control)"
-)
-# st.plotly_chart(fig_RM, use_container_width=True)
-# st.plotly_chart(fig_RC, use_container_width=True)
+
+# st.plotly_chart(fig_RM, width='stretch')
+# st.plotly_chart(fig_RC, width='stretch')
 
 def histograma_cunha_por_truque(
     df,
@@ -872,6 +871,7 @@ def histograma_cunha_por_truque(
     fig = px.histogram(
         df,
         x="bin",
+        text_auto=True,  # mostra a contagem em cada barra
         color="faixa_cor",
         category_orders={"bin": labels},
         color_discrete_map={
@@ -911,13 +911,34 @@ fig_RC = histograma_cunha_por_truque(
 col1, col2 = st.columns(2)
 with col1:
     fig_RM.update_layout(showlegend=False)
-    st.plotly_chart(fig_RM, use_container_width=True)
+    st.plotly_chart(fig_RM, width='stretch')
+    colunas = ["concatenatedCarID", "altura_cunha_max_media"]
+    limite_RM = 64
+    df_RM_f = df_RM[df_RM["altura_cunha_max_media"] > limite_RM][colunas]
+    st.dataframe(
+        df_RM_f,
+        column_config={
+            "concatenatedCarID": "Vagão",
+            "altura_cunha_max_media": "Altura de cunha",
+            },
+        hide_index=True,
+        )
     
 with col2:
     fig_RC.update_layout(showlegend=False)
-    st.plotly_chart(fig_RC, use_container_width=True)
+    st.plotly_chart(fig_RC, width='stretch')
+    colunas = ["concatenatedCarID", "altura_cunha_max_media"]
+    limite_RC = 45
+    df_RC_f = df_RC[df_RC["altura_cunha_max_media"] > limite_RC][colunas]
+    st.dataframe(
+        df_RC_f,
+        column_config={
+            "concatenatedCarID": "Vagão",
+            "altura_cunha_max_media": "Altura de cunha",
+            },
+        hide_index=True,
+        )
     
-
 
 # # 4️⃣ Resultado final
 # histograma = df_media[['concatenatedCarID', 'Truque', 'altura_cunha_max_media']]
@@ -960,4 +981,4 @@ with col2:
 #         annotation_position="top"
 #     )
 
-# st.plotly_chart(fig, use_container_width=True)
+# st.plotly_chart(fig, width='stretch')
