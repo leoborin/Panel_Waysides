@@ -65,7 +65,7 @@ with col2:
 cols = st.columns(3)
 with cols[0]:
     st.markdown("""
-<a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Consulta_Master" target="_self">
+<a href="https://panelwaysides-xfblbinrrpidr7nkwhmykk.streamlit.app/Consulta_Vagão" target="_self">
 <button id="consulta-btn" class="card-button">
 <h3>Consulta Master</h3>
 <p>Realize uma pesquisa detalhada de cada Ativo</p>
