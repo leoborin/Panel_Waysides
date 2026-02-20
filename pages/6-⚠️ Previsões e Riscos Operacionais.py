@@ -232,6 +232,12 @@ df_avarias = pd.read_excel(
     engine='openpyxl'
 )
 
+# SHAREPOINT | Base de truques
+truques_dim = pd.read_excel(
+    r'base_truques.xlsx',
+    engine='openpyxl'
+)
+
 # Dados simulados
 np.random.seed(42)
 dates = pd.date_range(datetime.today() - timedelta(days=180), periods=26, freq="7D")
@@ -603,6 +609,13 @@ st.plotly_chart(line_plot_real(df_dispon, "data", "real", "contratada", "", "Rea
 # ----------------------------------------------------------------------------------------------------
 # HISTOGRAMA DE CUNHAS
 # ----------------------------------------------------------------------------------------------------
+truques_dim = (
+    truques_dim
+    .rename(columns={
+        'VG + SERIE': 'concatenatedCarID',
+        'TRUQUE': 'Truque'
+    })[['concatenatedCarID', 'Truque']]
+)
 # Função para tratar outliers
 def tratar_outliers_trkv(df):
 
@@ -651,33 +664,48 @@ def tratar_outliers_trkv(df):
 
 cof_Outlier = 0.2
 df_TRKV_2 = tratar_outliers_trkv(df_trkv_f) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
-
-# Mapeamento de alarme de cunha
+# Juntar dimensão com fatos
+df_TRKV_2 = df_TRKV_2.merge(truques_dim, on="concatenatedCarID", how="left")
+# Mapeamento de alarme de cunha - REGRA MURYLO
 MAP_WEDGE = {
-    2: 45,
-    3: 57,
-    4: 64,
-    5: 57,
+    "Ride Control": 45,
+    "Barber": 57,
+    "Ride Master": 64,
+    "Motion Control": 57,
 }
+
 df_TRKV_2['Alarme'] = (
-    df_TRKV_2['WedgeTypeCode']
+    df_TRKV_2['Truque']
     .map(MAP_WEDGE)
     .fillna("inválido")
 )
 
-# Mapeamento de tipo de truque
-MAP_TRUQUE = {
-    2: "Ride Control",
-    3: "Barber",
-    4: "Ride Master",
-    5: "Motion Control",
-}
+# # Mapeamento de alarme de cunha
+# MAP_WEDGE = {
+#     2: 45,
+#     3: 57,
+#     4: 64,
+#     5: 57,
+# }
+# df_TRKV_2['Alarme'] = (
+#     df_TRKV_2['WedgeTypeCode']
+#     .map(MAP_WEDGE)
+#     .fillna("inválido")
+# )
 
-df_TRKV_2['Truque'] = (
-    df_TRKV_2['WedgeTypeCode']
-    .map(MAP_TRUQUE)
-    .fillna("inválido")
-)
+# # Mapeamento de tipo de truque
+# MAP_TRUQUE = {
+#     2: "Ride Control",
+#     3: "Barber",
+#     4: "Ride Master",
+#     5: "Motion Control",
+# }
+
+# df_TRKV_2['Truque'] = (
+#     df_TRKV_2['WedgeTypeCode']
+#     .map(MAP_TRUQUE)
+#     .fillna("inválido")
+# )
 
 # Desconsiderar registros de truques que não são Ride Control ou Ride Master
 df_TRKV_3 = df_TRKV_2[df_TRKV_2["Truque"].isin(["Ride Control", "Ride Master"])]
@@ -725,15 +753,90 @@ df_TRKV_4 = df_TRKV_3.merge(df_dim, on="concatenatedCarID", how="left")
 # -----------------------------
 df_TRKV_4 = df_TRKV_4[df_TRKV_4["timestamp"] >= df_TRKV_4["ULTIMA_RR"]]
 
-#Preparando histograma
 colunas_cunha = [
-    'A#L_1', 'A#L_2', 'A#R_1', 'A#R_2',
-    'B#L_1', 'B#L_2', 'B#R_1', 'B#R_2'
+    "A#L_1", "A#L_2", "A#R_1", "A#R_2",
+    "B#L_1", "B#L_2", "B#R_1", "B#R_2"
 ]
 
-# 1️⃣ Substituir zeros por NaN
 df = df_TRKV_4.copy()
-df[colunas_cunha] = df[colunas_cunha].replace(0, np.nan)
+df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+# 1- Ordena e pega só 5 registros mais recentes por vagão
+df = (
+    df.sort_values(["concatenatedCarID", "timestamp"], ascending=[True, False])
+      .groupby("concatenatedCarID")
+      .head(5)
+)
+
+# 2️⃣ Converter cunhas para formato longo (muito mais rápido pra agrupar)
+df_long = df.melt(
+    id_vars=["concatenatedCarID", "Truque", "timestamp"],
+    value_vars=colunas_cunha,
+    var_name="cunha",
+    value_name="altura"
+)
+
+limites = {
+    "Ride Master": 70,
+    "Ride Control": 52
+}
+
+df_long = df_long[
+    ~df_long.apply(
+        lambda x: x["Truque"] in limites and x["altura"] > limites[x["Truque"]],
+        axis=1
+    )
+]
+
+# 3️⃣ Ignorar zeros
+df_long["altura"] = df_long["altura"].replace(0, np.nan)
+df_long = df_long.dropna(subset=["altura"])
+
+
+# 4️⃣ Função vetorizada por vagão + cunha
+def regra_altura(x):
+    n = len(x)
+
+    if n >= 5:
+        vals = np.sort(x)[1:-1]
+        return vals.mean()
+
+    elif n == 4:
+        vals = np.sort(x)[1:-1]
+        return vals.mean()
+
+    elif n == 3:
+        return np.sort(x)[1]
+
+    elif n == 2:
+        return x.mean()
+
+    elif n == 1:
+        return x.iloc[0]
+
+    return np.nan
+
+
+alturas = (
+    df_long.groupby(["concatenatedCarID", "cunha"])["altura"]
+    .apply(regra_altura)
+    .reset_index()
+)
+
+# 5️⃣ Pegar maior altura entre as cunhas de cada vagão
+df_alturas = (
+    alturas.groupby("concatenatedCarID")["altura"]
+    .max()
+    .reset_index(name="altura_cunha_max_media")
+)
+
+# 6️⃣ Recuperar tipo de truque
+truque = (
+    df_alturas.drop_duplicates("concatenatedCarID")
+      [["concatenatedCarID", "Truque"]]
+)
+
+df_alturas = df_alturas.merge(truque, on="concatenatedCarID", how="left")
 
 # # 2️⃣ Média das cunhas por vagão + modelo do truque
 # df_media = (
@@ -742,72 +845,12 @@ df[colunas_cunha] = df[colunas_cunha].replace(0, np.nan)
 #             'Truque': lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan})
 #       .reset_index()
 # )
-def calcular_media_cunhas(df, colunas_cunha, timestamp_col='timestamp'):
-    """
-    Calcula, para cada vagão:
-    - média dos 2 maiores valores entre os 5 registros mais recentes
-      de cada coluna de cunha (ignorando zeros)
-    - modelo de truque mais frequente.
-
-    Parâmetros:
-        df : DataFrame original
-        colunas_cunha : lista com nomes das colunas de cunha
-        timestamp_col : nome da coluna de data/hora (default='timestamp')
-
-    Retorna:
-        DataFrame com médias das cunhas + Truque predominante.
-    """
-
-    # 1) Formato longo (cunhas em linhas)
-    df_long = df.melt(
-        id_vars=['concatenatedCarID', timestamp_col, 'Truque'],
-        value_vars=colunas_cunha,
-        var_name='cunha',
-        value_name='valor'
-    )
-
-    # 2) Remover zeros
-    df_long = df_long[df_long['valor'] != 0]
-
-    # 3) Ordenar por mais recente
-    df_long = df_long.sort_values(
-        ['concatenatedCarID', 'cunha', timestamp_col],
-        ascending=[True, True, False]
-    )
-
-    # 4) Últimos 5 registros por vagão/cunha
-    ult5 = df_long.groupby(
-        ['concatenatedCarID', 'cunha'],
-        group_keys=False
-    ).head(5)
-
-    # 5) Média dos 2 maiores
-    media = (
-        ult5.groupby(['concatenatedCarID', 'cunha'])['valor']
-            .apply(lambda x: x.nlargest(2).mean())
-            .unstack('cunha')
-            .reset_index()
-    )
-
-    # 6) Truque mais frequente
-    truque = (
-        df.groupby('concatenatedCarID')['Truque']
-          .agg(lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan)
-          .reset_index()
-    )
-
-    # 7) Merge final
-    return media.merge(truque, on='concatenatedCarID', how='left')
-
-df_media = calcular_media_cunhas(df, colunas_cunha)
-
-# 3️⃣ Maior média entre as 8 cunhas
-df_media['altura_cunha_max_media'] = df_media[colunas_cunha].max(axis=1)
 
 dfs_por_truque = {
     truque: grupo.reset_index(drop=True)
-    for truque, grupo in df_media.groupby('Truque')
+    for truque, grupo in df_alturas.groupby('Truque')
 }
+
 
 # Gerando um dataframe para cada tipo de truque
 df_RC = dfs_por_truque['Ride Control']
