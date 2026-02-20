@@ -286,11 +286,11 @@ modelos_validos = [
     'GÔNDOLAS BAUXITA'
 ]
 
-vgs_validos = (
-    df_z851.loc[df_z851['MODELO'].isin(modelos_validos), 'EQUNR']
-    .astype(str)
-    .unique()
-)
+# vgs_validos = (
+#     df_z851.loc[df_z851['MODELO'].isin(modelos_validos), 'EQUNR']
+#     .astype(str)
+#     .unique()
+# )
 
 df_z369['ATIVO'] = df_z369['ATIVO'].astype(str).str.zfill(10)
 
