@@ -824,7 +824,7 @@ alturas = (
 )
 
 # 5️⃣ Pegar maior altura entre as cunhas de cada vagão
-df_alturas = (
+resultado = (
     alturas.groupby("concatenatedCarID")["altura"]
     .max()
     .reset_index(name="altura_cunha_max_media")
@@ -832,11 +832,11 @@ df_alturas = (
 
 # 6️⃣ Recuperar tipo de truque
 truque = (
-    df_alturas.drop_duplicates("concatenatedCarID")
+    df.drop_duplicates("concatenatedCarID")
       [["concatenatedCarID", "Truque"]]
 )
 
-df_alturas = df_alturas.merge(truque, on="concatenatedCarID", how="left")
+resultado = resultado.merge(truque, on="concatenatedCarID", how="left")
 
 # # 2️⃣ Média das cunhas por vagão + modelo do truque
 # df_media = (
@@ -848,7 +848,7 @@ df_alturas = df_alturas.merge(truque, on="concatenatedCarID", how="left")
 
 dfs_por_truque = {
     truque: grupo.reset_index(drop=True)
-    for truque, grupo in df_alturas.groupby('Truque')
+    for truque, grupo in resultado.groupby('Truque')
 }
 
 
