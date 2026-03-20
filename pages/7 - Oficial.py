@@ -13,8 +13,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import glob
 import os
-
-
+import unicodedata
+import re
 
 #--------------------------------------------------------------------------------
 ## Configuração da página e cabeçalho
@@ -35,6 +35,14 @@ WARNING = "#F39C12"
 DANGER = "#E74C3C"
 TEXT = "#1F2D3D"
 MUTED = "#6C7C8C"
+
+# st.markdown("""
+#     <style>
+#     .stApp {
+#         background-color: #F2F5F6;
+#     }
+#     </style>
+# """, unsafe_allow_html=True)
 
 st.markdown(f"""
 <style>
@@ -62,7 +70,7 @@ background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.25);
   color: #fff;
   padding: 10px 18px;       /* Mais espaço interno */
-  border-radius: 6px;       /* Cantos levemente arredondados */
+  border-radius: 0px;       /* Cantos retos arredondados */
   font-size: 14px;          /* Texto maior */
   font-weight: 600;         /* Texto mais forte */
   display: flex;
@@ -197,6 +205,40 @@ def line_plot_real(df, x, y, z, title, y_title, color=PRIMARY):
     return fig
 
 #--------------------------------------------------------------------------------
+## Funções de tratamento
+#--------------------------------------------------------------------------------
+def padronizar_colunas(df):
+    df = df.copy()
+    
+    df.columns = (
+        df.columns
+        .str.strip()  # remove espaços no começo/fim
+        .str.lower()  # tudo minúsculo
+        .str.replace(' ', '_', regex=False)  # espaço -> _
+        .map(lambda x: unicodedata.normalize('NFKD', x)
+             .encode('ascii', 'ignore')
+             .decode('utf-8'))  # remove acentos
+    )
+    
+    return df
+
+# Padronizar identificação do ativo para 7 números + 3 letras
+def padronizar_identificacao(valor):
+    if pd.isna(valor):
+        return None
+    
+    valor = str(valor).strip().upper()
+    
+    # Extrai letras e números
+    letras = re.findall(r'[A-Z]+', valor)
+    numeros = re.findall(r'\d+', valor)
+    
+    if letras and numeros:
+        return numeros[0].zfill(7) + letras[0]
+    
+    return None
+
+#--------------------------------------------------------------------------------
 ## Carregamento de Dados 
 #--------------------------------------------------------------------------------
 
@@ -238,10 +280,10 @@ truques_dim = pd.read_excel(
     engine='openpyxl'
 )
 
-# Dados simulados
-np.random.seed(42)
-dates = pd.date_range(datetime.today() - timedelta(days=180), periods=26, freq="7D")
-df_dispon = pd.DataFrame({"data": dates, "real": np.clip(240 + np.cumsum(np.random.randn(len(dates))), 230, 250), "contratada": np.full(len(dates), 243)})
+# # Dados simulados
+# np.random.seed(42)
+# dates = pd.date_range(datetime.today() - timedelta(days=180), periods=26, freq="7D")
+# df_dispon = pd.DataFrame({"data": dates, "real": np.clip(240 + np.cumsum(np.random.randn(len(dates))), 230, 250), "contratada": np.full(len(dates), 243)})
 
 # IMPORTANDO DADOS DO TRKV PROVISORIAMENTE
 def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
@@ -265,16 +307,18 @@ def function_to_get_data(MONGO_URI_PRD, DB_NAME_PRD, COLLECTION_NAME):
 MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
 DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
 
-# Importação dos dados do Truck View
-# df_trkv = function_to_get_data(
-#             MONGO_URI_PRD, DB_NAME_PRD, 'TRKV_treated'#,
-#             #query={
-#             #    'tipo_do_veículo': {
-#             #        '$not': {
-#             #            '$regex': 'L'
-#             #        }
-#             #    }}
-# )
+
+# Tratamento dos dados
+df_z851 = padronizar_colunas(df_z851)
+df_164 = padronizar_colunas(df_164)
+df_trkv = padronizar_colunas(df_trkv)
+df_WCM = padronizar_colunas(df_WCM)
+df_z369 = padronizar_colunas(df_z369)
+df_z1568 = padronizar_colunas(df_z1568)
+df_tbogi = padronizar_colunas(df_tbogi)
+truques_dim = padronizar_colunas(truques_dim)
+df_avarias = padronizar_colunas(df_avarias)
+
 #--------------------------------------------------------------------------------
 ## Filtro Global – MODELO
 #--------------------------------------------------------------------------------
@@ -286,22 +330,9 @@ modelos_validos = [
     'GÔNDOLAS BAUXITA'
 ]
 
-# vgs_validos = (
-#     df_z851.loc[df_z851['MODELO'].isin(modelos_validos), 'EQUNR']
-#     .astype(str)
-#     .unique()
-# )
+df_z369['ativo'] = df_z369['ativo'].astype(str).str.zfill(10)
 
-df_z369['ATIVO'] = df_z369['ATIVO'].astype(str).str.zfill(10)
-
-# modelos = sorted(df_z851['MODELO'].dropna().unique())
 modelos = modelos_validos
-
-# modelo_sel = st.multiselect(
-#     "Modelo do vagão",
-#     modelos,
-#     default=modelos
-# )
 
 st.markdown(
     "<span style='font-size:14px;font-weight:600;'>Modelo do vagão:</span>",
@@ -317,17 +348,33 @@ modelo_sel = st.multiselect(
 
 vagoes_validos = (
     df_z851
-    .loc[df_z851['MODELO'].isin(modelo_sel), 'EQUNR']
+    .loc[df_z851['modelo'].isin(modelo_sel), 'equnr']
     .unique()
 )
 
-df_trkv_f = df_trkv[df_trkv['concatenatedCarID'].isin(vagoes_validos)].copy()
-df_z369_f = df_z369[df_z369['ATIVO'].isin(vagoes_validos)].copy()
+st.markdown(f"Quantidade de vagões válidos: {len(vagoes_validos)}")
+
+df_trkv_f = df_trkv[df_trkv['concatenatedcarid'].isin(vagoes_validos)].copy()
+# Tratamento z369
+df_z369['ativo'] = df_z369['ativo'].astype(str).str.zfill(10)
+df_z369_f = df_z369[df_z369['ativo'].isin(vagoes_validos)].copy()
 df_z369_f['dt_abertura_trated'] = pd.to_datetime(df_z369_f['dt_abertura_trated'])
 df_z369_f = df_z369_f[df_z369_f['dt_abertura_trated'].dt.year <= 2100]
+# Tratamento z851
+df_z851 = df_z851[df_z851['equnr'].isin(vagoes_validos)].copy()
+colunas_data = ['data_de_fabricacao', 'data_fim', 'data_garantia', 'ultima_rg',
+       'ultima_rr', 'ultima_ri', 'atualizacao', 'data_de_fabricacao_trated', 'data_fim_trated', 'data_garantia_trated',
+       'dt_last_udate_trated', 'dt_sincronizacao']
+df_z851[colunas_data] = df_z851[colunas_data].apply(
+    lambda x: pd.to_datetime(x, errors='coerce')
+)
+df_z851['equnr'] = df_z851['equnr'].astype(str)
+# Tratamento WCM
+df_WCM['equnr'] = df_WCM['json_identificacao_do_veiculo'].apply(padronizar_identificacao)
+df_WCM_f = df_WCM[df_WCM['equnr'].isin(vagoes_validos)].copy()
 
-df_avarias['Sistema'] = (
-    df_avarias['Combinado2']
+df_avarias['sistema'] = (
+    df_avarias['combinado2']
     .fillna('')
     .str.split('|', n=1)
     .str[0]
@@ -337,15 +384,15 @@ df_avarias['Sistema'] = (
 df_z369_f = (
     df_z369_f
     .merge(
-        df_avarias[['CODFalha', 'Sistema']].drop_duplicates(),
+        df_avarias[['codfalha', 'sistema']].drop_duplicates(),
         how='left',
-        left_on='Cod Falha',
-        right_on='CODFalha'
+        left_on='cod_falha',
+        right_on='codfalha'
     )
-    .drop(columns='CODFalha')
+    .drop(columns='codfalha')
 )
 
-df_z369_f['Sistema'] = df_z369_f['Sistema'].map({
+df_z369_f['sistema'] = df_z369_f['sistema'].map({
     'FR': 'FREIO',
     'SE': 'SUPERESTRUTURA',
     'CCT': 'CCT',
@@ -354,13 +401,13 @@ df_z369_f['Sistema'] = df_z369_f['Sistema'].map({
 })
 
 # KPIs + Top 5 Defeitos 
-qtd_vgs = df_z851['EQUNR'].nunique()
+qtd_vgs = df_z851['equnr'].nunique()
 
 def contar(texto):
     return df_z369_f[
-        (df_z369_f['STATUS'] == 'MSPN') &
-        (df_z369_f['TEXTO'].str.contains(texto, case=False, na=False))
-    ]['ATIVO'].nunique()
+        (df_z369_f['status'] == 'MSPN') &
+        (df_z369_f['texto'].str.contains(texto, case=False, na=False))
+    ]['ativo'].nunique()
 
 kpis = [
     ("Truck view", contar("TRKV"), "Ocorrências", SUCCESS),
@@ -371,59 +418,18 @@ kpis = [
 
 top5 = (
     df_z369_f[
-        (df_z369_f["STATUS"] == "MSPN") &
-        (df_z369_f["TP NOTA"].isin(["M1", "M2"]))
-    ]["TEXTO"]
+        (df_z369_f["status"] == "MSPN") &
+        (df_z369_f["tp_nota"].isin(["M1", "M2"]))
+    ]["texto"]
     .value_counts()
     .head(5)
-    .reset_index(name="QUANTIDADE")
+    .reset_index(name="quantidade")
 )
 
-# ===============================
-# KPIs
-# ===============================
-st.markdown("<div class='section-title'>Indicadores principais</div>", unsafe_allow_html=True)
-
-cols = st.columns(4)
-
-for i, (lbl, val, sub, color) in enumerate(kpis):
-    with cols[i]:
-        st.markdown(f"""
-        <div style="
-            background-color:{CARD_BG};
-            border:1px solid {BORDER};
-            border-radius:10px;
-            padding:14px;
-            text-align:center;
-        ">
-            <div style="color:{MUTED}; font-size:14px;">{lbl}</div>
-            <div style="color:{TEXT}; font-size:28px; font-weight:700;">{val}</div>
-            <div style="color:{color}; font-size:12px;">{sub}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-#st.write("")
 st.divider()
-
-# ===============================
-# SLA DE PÁTIOS
-# ===============================
-st.markdown("<div class='section-title'>SLA de pátios (DADOS SIMULADOS)</div>", unsafe_allow_html=True)
-
-g1, g2, g3, g4, g5, g6, g7, g8 = st.columns(8)
-g1.plotly_chart(semicircle_gauge("ZRO", 41, SUCCESS), width='stretch')
-g2.plotly_chart(semicircle_gauge("ZRX", 70, WARNING), width='stretch')
-g3.plotly_chart(semicircle_gauge("ZTO", 85, DANGER), width='stretch')
-g4.plotly_chart(semicircle_gauge("ZAR", 90, DANGER), width='stretch')
-g5.plotly_chart(semicircle_gauge("ZZZ", 57, SUCCESS), width='stretch')
-g6.plotly_chart(semicircle_gauge("TOM", 73, WARNING), width='stretch')
-g7.plotly_chart(semicircle_gauge("TRO", 68, SUCCESS), width='stretch')
-g8.plotly_chart(semicircle_gauge("PRV", 70, SUCCESS), width='stretch')
-
-st.divider()
-# ===============================
+# =============================================================================================
 # TOP 5 DEFEITOS
-# ===============================
+# =============================================================================================
 st.markdown("<div class='section-title'>Top 5 defeitos mais recorrentes</div>", unsafe_allow_html=True)
 # st.subheader("Top 5 defeitos mais recorrentes")
 
@@ -432,10 +438,10 @@ col_l, col_r = st.columns([7, 3])
 with col_l:
     fig_top5 = px.bar(
         top5,
-        x="QUANTIDADE",
-        y="TEXTO",
+        x="quantidade",
+        y="texto",
         orientation="h",
-        text="QUANTIDADE",
+        text="quantidade",
         #title="Top 5 defeitos mais frequentes",
         color_discrete_sequence=["#003865"]
     )
@@ -449,25 +455,6 @@ with col_l:
     )
 
     st.plotly_chart(fig_top5, width='stretch')
-
-# with col_r:
-#     st.markdown(
-#     """
-#     <div style="
-#         background-color:#F3F6FA;
-#         border:1px solid #D0D7E2;
-#         border-radius:10px;
-#         padding:12px 16px;
-#         font-size:14px;
-#     ">
-#         <b>Critério do ranking</b><br><br>
-#         • Apenas notas com status <b>MSPN</b><br>
-#         • Considera somente <b>M1 e M2</b><br>
-#         • Respeita os filtros globais da página
-#     </div>
-#     """,
-#     unsafe_allow_html=True
-# )
     
 with col_r:
     st.markdown(
@@ -492,129 +479,16 @@ with col_r:
     )
     
 st.divider()
-#8️⃣ EVOLUÇÃO + HEATMAP
-st.markdown("<div class='section-title'>Evolução de abertura de notas por sistema</div>", unsafe_allow_html=True)
-# st.subheader('Evolução de abertura de notas por sistema')
 
-tipos_nota = sorted(df_z369_f['TP NOTA'].dropna().unique())
-abas = st.tabs(tipos_nota)
-
-for aba, tp in zip(abas, tipos_nota):
-    with aba:
-        df_tp = df_z369_f[df_z369_f['TP NOTA'] == tp].copy()
-
-        if df_tp.empty:
-            st.warning('Sem dados para este tipo de nota.')
-            continue
-
-        col1, col2 = st.columns(2)
-
-        # ===== Evolução =====
-        with col1:
-            df_tp['MES'] = (
-                df_tp['dt_abertura_trated']
-                .dt.to_period('M')
-                .dt.to_timestamp()
-            )
-
-            df_g = (
-                df_tp
-                .groupby(['MES', 'Sistema'])
-                .size()
-                .reset_index(name='QTD')
-            )
-
-            df_g['PERCENTUAL'] = (
-                df_g['QTD'] /
-                df_g.groupby('MES')['QTD'].transform('sum') * 100
-            )
-
-            fig_area = px.area(
-                df_g,
-                x='MES',
-                y='PERCENTUAL',
-                color='Sistema',
-                groupnorm='percent',
-                labels={'PERCENTUAL': '% de notas'}
-            )
-
-            fig_area.update_layout(
-                yaxis=dict(ticksuffix='%'),
-                hovermode='x unified'
-            )
-
-            # st.plotly_chart(fig_area, width='stretch')
-            st.plotly_chart(
-                fig_area,
-                width='stretch',
-                key=f"fig_area_{tp}"
-            )
-
-        # ===== Heatmap =====
-        with col2:
-            sistema = st.selectbox(
-                'Sistema',
-                sorted(df_tp['Sistema'].dropna().unique()),
-                key=f'sis_{tp}'
-            )
-
-            df_h = (
-                df_tp[df_tp['Sistema'] == sistema]
-                .assign(
-                    mes=lambda x: (
-                        x['dt_abertura_trated']
-                        .dt.to_period('M')
-                        .dt.to_timestamp()
-                    )
-                )
-                .groupby(['TEXTO', 'mes'])
-                .size()
-                .reset_index(name='qtd')
-            )
-
-            top_txt = (
-                df_h.groupby('TEXTO')['qtd']
-                .sum()
-                .sort_values(ascending=False)
-                .head(20)
-                .index
-            )
-
-            heat = (
-                df_h[df_h['TEXTO'].isin(top_txt)]
-                .pivot(index='TEXTO', columns='mes', values='qtd')
-                .fillna(0)
-            )
-
-            fig_heat = px.imshow(
-                heat,
-                aspect='auto',
-                color_continuous_scale='Blues'
-            )
-
-            fig_heat.update_yaxes(autorange='reversed')
-            # st.plotly_chart(fig_heat, width='stretch')
-            st.plotly_chart(
-                fig_heat,
-                width='stretch',
-                key=f"fig_heat_{tp}_{sistema}"
-            )
-
-st.divider()
-st.markdown("<div class='section-title'>Disponibilidade real x contratada (DADOS SIMULADOS)</div>", unsafe_allow_html=True)
-# st.subheader("Disponibilidade real x contratada")
-
-st.plotly_chart(line_plot_real(df_dispon, "data", "real", "contratada", "", "Real", color=SUCCESS), width='stretch')
-
-# ----------------------------------------------------------------------------------------------------
+# =============================================================================================
 # HISTOGRAMA DE CUNHAS
-# ----------------------------------------------------------------------------------------------------
+# =============================================================================================
 truques_dim = (
     truques_dim
     .rename(columns={
-        'VG + SERIE': 'concatenatedCarID',
-        'TRUQUE': 'Truque'
-    })[['concatenatedCarID', 'Truque']]
+        'vg_+_serie': 'concatenatedcarid',
+        'truque': 'truque'
+    })[['concatenatedcarid', 'truque']]
 )
 # Função para tratar outliers
 def tratar_outliers_trkv(df):
@@ -627,14 +501,14 @@ def tratar_outliers_trkv(df):
         valor < min_3 * 0.70
     """
     df = df.fillna(0)                     
-    df["key"] = df["CarIDNumber"].astype(int)
+    df["key"] = df["caridnumber"].astype(int)
     df["timestamp"] = pd.to_datetime(
         df["timestamp"],  errors="coerce")
     df = df.sort_values(["key", "timestamp"])
 
     # Cálculo da força máxima entre os 8 sensores
-    sensores = ["A#L_1", "A#L_2", "A#R_1", "A#R_2",
-                "B#L_1", "B#L_2", "B#R_1", "B#R_2"]
+    sensores = ["a#l_1", "a#l_2", "a#r_1", "a#r_2",
+                "b#l_1", "b#l_2", "b#r_1", "a#r_2"]
 
     df["max_valor"] = df[sensores].max(axis=1)
 
@@ -652,20 +526,20 @@ def tratar_outliers_trkv(df):
     )
 
     # Regras ±30%
-    df["DESCARTAR"] = (
+    df["descartar"] = (
         (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
         (df["max_valor"] < df["min_3"] * (1-cof_Outlier)) |
        ( df["max_valor"] == 0)
     )
 
-    df["STATUS_out"] = df["DESCARTAR"].map(
-        {True: "DESCARTAR", False: "OK"})
+    df["status_out"] = df["descartar"].map(
+        {True: "descartar", False: "OK"})
     return df
 
 cof_Outlier = 0.2
 df_TRKV_2 = tratar_outliers_trkv(df_trkv_f) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
 # Juntar dimensão com fatos
-df_TRKV_2 = df_TRKV_2.merge(truques_dim, on="concatenatedCarID", how="left")
+df_TRKV_2 = df_TRKV_2.merge(truques_dim, on="concatenatedcarid", how="left")
 # Mapeamento de alarme de cunha - REGRA MURYLO
 MAP_WEDGE = {
     "Ride Control": 45,
@@ -674,88 +548,61 @@ MAP_WEDGE = {
     "Motion Control": 57,
 }
 
-df_TRKV_2['Alarme'] = (
-    df_TRKV_2['Truque']
+df_TRKV_2['alarme'] = (
+    df_TRKV_2['truque']
     .map(MAP_WEDGE)
     .fillna("inválido")
 )
 
-# # Mapeamento de alarme de cunha
-# MAP_WEDGE = {
-#     2: 45,
-#     3: 57,
-#     4: 64,
-#     5: 57,
-# }
-# df_TRKV_2['Alarme'] = (
-#     df_TRKV_2['WedgeTypeCode']
-#     .map(MAP_WEDGE)
-#     .fillna("inválido")
-# )
-
-# # Mapeamento de tipo de truque
-# MAP_TRUQUE = {
-#     2: "Ride Control",
-#     3: "Barber",
-#     4: "Ride Master",
-#     5: "Motion Control",
-# }
-
-# df_TRKV_2['Truque'] = (
-#     df_TRKV_2['WedgeTypeCode']
-#     .map(MAP_TRUQUE)
-#     .fillna("inválido")
-# )
-
 # Desconsiderar registros de truques que não são Ride Control ou Ride Master
-df_TRKV_3 = df_TRKV_2[df_TRKV_2["Truque"].isin(["Ride Control", "Ride Master"])]
+df_TRKV_3 = df_TRKV_2[df_TRKV_2["truque"].isin(["Ride Control", "Ride Master"])]
 
 # Desconsiderar registros com STATUS_out = DESCARTAR (jogar outliers fora)
-df_TRKV_3 = df_TRKV_3[df_TRKV_3['STATUS_out'] == "OK"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['status_out'] == "OK"]
 
 # Desconsiderar registros com 'Header_TrainDirection' = N
-df_TRKV_3 = df_TRKV_3[df_TRKV_3['Header_TrainDirection'] == "S"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['header_traindirection'] == "S"]
 
 # Desconsiderar registros com concatenatedCarID = 000000None ou 0000000nan
-df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedCarID'] != "000000None"]
-df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedCarID'] != "0000000nan"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedcarid'] != "000000None"]
+df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedcarid'] != "0000000nan"]
 
 # Jogar fora colunas desnecessárias
 cols_drop = [
-    'CarSequenceNumber','CarOrientation','CarType',
-    'TruckFields','TruckIDs','TruckValues','timestr',
-    'Header_TrainSequenceNumber','data_sincronizacao',
+    'carsequencenumber','carorientation','cartype',
+    'truckfields','truckids','truckvalues','timestr',
+    'header_trainsequencenumber','data_sincronizacao',
     'max_valor','min_3','max_3'
 ]
 df_TRKV_3 = df_TRKV_3.drop(columns=cols_drop, errors='ignore')
 
 # Últimos tratamentos do df_TRKV
 # -----------------------------
-df_TRKV_3["concatenatedCarID"] = df_TRKV_3["concatenatedCarID"].astype(str)
+df_TRKV_3["concatenatedcarid"] = df_TRKV_3["concatenatedcarid"].astype(str)
 df_TRKV_3["timestamp"] = pd.to_datetime(df_TRKV_3["timestamp"], errors="coerce")
-df_TRKV_3["Alarme"] = pd.to_numeric(
-    df_TRKV_3["Alarme"],
+df_TRKV_3["alarme"] = pd.to_numeric(
+    df_TRKV_3["alarme"],
     errors="coerce"
 ).astype("float64")
 
 ## Pegar a data da última RR no df_z851 e fazer um merge com o df_TRKV_3
 
 # Preparar dataframe dimensão (df_z851)
-df_z851["concatenatedCarID"] = df_z851["EQUNR"]
-df_z851["ULTIMA_RR"] = pd.to_datetime(df_z851["ULTIMA_RR"], errors="coerce")
+df_z851["concatenatedcarid"] = df_z851["equnr"]
+df_z851["ultima_rr"] = pd.to_datetime(df_z851["ultima_rr"], errors="coerce")
 
-df_dim = df_z851[["concatenatedCarID", "ULTIMA_RR"]].drop_duplicates()
+df_dim = df_z851[["concatenatedcarid", "ultima_rr"]].drop_duplicates()
 
 # Juntar dimensão com fatos
-df_TRKV_4 = df_TRKV_3.merge(df_dim, on="concatenatedCarID", how="left")
+df_TRKV_4 = df_TRKV_3.merge(df_dim, on="concatenatedcarid", how="left")
 
 # Filtrar somente registros após última RG
 # -----------------------------
-df_TRKV_4 = df_TRKV_4[df_TRKV_4["timestamp"] >= df_TRKV_4["ULTIMA_RR"]]
+df_TRKV_4 = df_TRKV_4[df_TRKV_4["timestamp"] >= df_TRKV_4["ultima_rr"]]
 
 colunas_cunha = [
-    "A#L_1", "A#L_2", "A#R_1", "A#R_2",
-    "B#L_1", "B#L_2", "B#R_1", "B#R_2"
+    "a#l_1", "a#l_2", "a#r_1", "a#r_2",
+    "b#l_1", "b#l_2", "b#r_1", "a#r_2"
 ]
 
 df = df_TRKV_4.copy()
@@ -763,14 +610,14 @@ df["timestamp"] = pd.to_datetime(df["timestamp"])
 
 # 1- Ordena e pega só 5 registros mais recentes por vagão
 df = (
-    df.sort_values(["concatenatedCarID", "timestamp"], ascending=[True, False])
-      .groupby("concatenatedCarID")
+    df.sort_values(["concatenatedcarid", "timestamp"], ascending=[True, False])
+      .groupby("concatenatedcarid")
       .head(5)
 )
 
 # 2️⃣ Converter cunhas para formato longo (muito mais rápido pra agrupar)
 df_long = df.melt(
-    id_vars=["concatenatedCarID", "Truque", "timestamp"],
+    id_vars=["concatenatedcarid", "truque", "timestamp"],
     value_vars=colunas_cunha,
     var_name="cunha",
     value_name="altura"
@@ -783,7 +630,7 @@ limites = {
 
 df_long = df_long[
     ~df_long.apply(
-        lambda x: x["Truque"] in limites and x["altura"] > limites[x["Truque"]],
+        lambda x: x["truque"] in limites and x["altura"] > limites[x["truque"]],
         axis=1
     )
 ]
@@ -818,37 +665,29 @@ def regra_altura(x):
 
 
 alturas = (
-    df_long.groupby(["concatenatedCarID", "cunha"])["altura"]
+    df_long.groupby(["concatenatedcarid", "cunha"])["altura"]
     .apply(regra_altura)
     .reset_index()
 )
 
 # 5️⃣ Pegar maior altura entre as cunhas de cada vagão
 resultado = (
-    alturas.groupby("concatenatedCarID")["altura"]
+    alturas.groupby("concatenatedcarid")["altura"]
     .max()
     .reset_index(name="altura_cunha_max_media")
 )
 
 # 6️⃣ Recuperar tipo de truque
 truque = (
-    df.drop_duplicates("concatenatedCarID")
-      [["concatenatedCarID", "Truque"]]
+    df.drop_duplicates("concatenatedcarid")
+      [["concatenatedcarid", "truque"]]
 )
 
-resultado = resultado.merge(truque, on="concatenatedCarID", how="left")
-
-# # 2️⃣ Média das cunhas por vagão + modelo do truque
-# df_media = (
-#     df.groupby('concatenatedCarID')
-#       .agg({**{c: 'mean' for c in colunas_cunha},
-#             'Truque': lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan})
-#       .reset_index()
-# )
+resultado = resultado.merge(truque, on="concatenatedcarid", how="left")
 
 dfs_por_truque = {
     truque: grupo.reset_index(drop=True)
-    for truque, grupo in resultado.groupby('Truque')
+    for truque, grupo in resultado.groupby('truque')
 }
 
 
@@ -873,10 +712,6 @@ df_RC["bin"] = pd.cut(
     labels=labels_RC,
     include_lowest=True
 )
-
-
-# st.plotly_chart(fig_RM, width='stretch')
-# st.plotly_chart(fig_RC, width='stretch')
 
 def histograma_cunha_por_truque(
     df,
@@ -951,77 +786,361 @@ fig_RC = histograma_cunha_por_truque(
     titulo="Histograma - Ride Control"
 )
 
-col1, col2 = st.columns(2)
+# Caixa de seleção
+opcao = st.selectbox(
+    "Tipo de truque:",
+    [
+        "Ride Master",
+        "Ride Control"
+    ]
+)
+
+if opcao == "Ride Master":
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_RM.update_layout(showlegend=False)
+        st.plotly_chart(fig_RM, width='stretch')
+    with col2:
+        colunas = ["concatenatedcarid", "altura_cunha_max_media"]
+        limite_RM = 64
+        df_RM_f = df_RM[df_RM["altura_cunha_max_media"] > limite_RM][colunas]
+        st.dataframe(
+            df_RM_f,
+            column_config={
+                "concatenatedcarid": "Vagão",
+                "altura_cunha_max_media": "Altura de cunha",
+                },
+            hide_index=True,
+            )
+elif opcao == "Ride Control":
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_RC.update_layout(showlegend=False)
+        st.plotly_chart(fig_RC, width='stretch')
+    with col2:
+        colunas = ["concatenatedcarid", "altura_cunha_max_media"]
+        limite_RC = 45
+        df_RC_f = df_RC[df_RC["altura_cunha_max_media"] > limite_RC][colunas]
+        st.dataframe(
+            df_RC_f,
+            column_config={
+                "concatenatedcarid": "Vagão",
+                "altura_cunha_max_media": "Altura de cunha",
+                },
+            hide_index=True,
+            )
+    
+# ============================================================================================================================
+# DISTRIBUIÇÃO DE TRUQUES
+# ============================================================================================================================
+
+def grafico_rosca_truques(
+    df_z851,
+    truques_dim,
+    status_validos=("1", "2"),
+    limite_percentual=0.05
+):
+    """
+    Gera gráfico de rosca da distribuição de tipos de truque.
+    
+    Parâmetros:
+    - df_z851: DataFrame principal da frota
+    - truques_dim: DataFrame com equnr e Truque
+    - status_validos: tupla com status considerados na frota ativa
+    - limite_percentual: percentual mínimo para exibir valor dentro da fatia
+    """
+
+    # -------------------------
+    # Merge com dimensão
+    # -------------------------
+
+    truques_dim = truques_dim.rename(columns={
+        "concatenatedcarid": "equnr"
+    })[["equnr", "truque"]]
+
+    df = df_z851.merge(truques_dim, on="equnr", how="left")
+
+    # -------------------------
+    # Filtro de status
+    # -------------------------
+
+    df = df[df["status"].isin(status_validos)]
+
+    # -------------------------
+    # Contagem
+    # -------------------------
+
+    df_count = (
+        df["truque"]
+        .value_counts()
+        .reset_index()
+    )
+
+    df_count.columns = ["truque", "quantidade"]
+    df_count = df_count.sort_values("quantidade", ascending=False)
+
+    total = df_count["quantidade"].sum()
+
+    df_count["percentual"] = df_count["quantidade"] / total
+
+    # -------------------------
+    # Cores fixas
+    # -------------------------
+
+    mapa_cores = {
+        "Ride Master": "#0D3B66",
+        "Ride Control": "#5EA9DD",
+        "Motion Control": "#1E9F7F",
+        "Barber": "#7FE06C"
+    }
+
+    cores = [
+        mapa_cores.get(tipo, "#B0B0B0")
+        for tipo in df_count["truque"]
+    ]
+
+    # -------------------------
+    # Texto interno
+    # -------------------------
+
+    texto_interno = [
+        f"{p:.1%}" if p >= limite_percentual else ""
+        for p in df_count["percentual"]
+    ]
+
+    # -------------------------
+    # Criar gráfico
+    # -------------------------
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Pie(
+        labels=df_count["truque"],
+        values=df_count["quantidade"],
+        hole=0.65,
+        marker=dict(colors=cores, line=dict(color="white", width=2)),
+        text=texto_interno,
+        textinfo="text",
+        textposition="inside",
+        hovertemplate=
+            "<b>%{label}</b><br>" +
+            "Quantidade: %{value}<br>" +
+            "Percentual: %{percent}<br>" +
+            "<extra></extra>",
+        sort=False
+    ))
+
+    fig.add_annotation(
+        text=f"<b style='font-size:28px'>{total}</b><br>"
+             "<span style='font-size:14px;color:gray'>Vagões</span>",
+        x=0.5,
+        y=0.5,
+        showarrow=False
+    )
+
+    fig.update_layout(
+        #template="plotly_white",
+        margin=dict(t=40, b=20, l=20, r=20),
+        title = "Distribuição de truques na frota",
+        legend_title="Tipo de Truque",
+        height=380
+    )
+    fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.1,
+            xanchor="center",
+            x=0.5
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",  # fundo total transparente
+        plot_bgcolor="rgba(0,0,0,0)"    # área interna transparente
+    )
+
+    return fig
+
+col1, col2 = st.columns([1, 3])
+
 with col1:
-    fig_RM.update_layout(showlegend=False)
-    st.plotly_chart(fig_RM, width='stretch')
-    colunas = ["concatenatedCarID", "altura_cunha_max_media"]
-    limite_RM = 64
-    df_RM_f = df_RM[df_RM["altura_cunha_max_media"] > limite_RM][colunas]
-    st.dataframe(
-        df_RM_f,
-        column_config={
-            "concatenatedCarID": "Vagão",
-            "altura_cunha_max_media": "Altura de cunha",
-            },
-        hide_index=True,
-        )
-    
+    fig = grafico_rosca_truques(df_z851, truques_dim)
+    st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================================================================================
+# GRAFICO WCM 
+# ============================================================================================================================
+# Jogar fora dados de locomotivas
+df_WCM_f = df_WCM_f[
+    ~df_WCM_f['json_tipo_do_veiculo']
+    .astype(str)
+    .str.upper()
+    .str.startswith('L')
+]
+
+df_WCM_f = df_WCM_f[
+    ~df_WCM_f['json_trem_l_dir']
+    .astype(str)
+    .str.upper()
+    .str.startswith('IMPORT')
+]
+
+# Jogar fora dados anteriores à ultima RG
+df_WCM_f = df_WCM_f.merge(df_z851[['equnr','ultima_rr']], on="equnr", how="left")
+df_WCM_f = df_WCM_f[df_WCM_f["json_trem_traintime_dt"] >= df_WCM_f["ultima_rr"]]
+
+def calcular_media_maximas_passagens(
+    df,
+    col_vagao='equnr',
+    col_data='json_trem_traintime_dt',
+    col_impacto='json_forca_de_pico_de_impacto_da_roda_(kn)',
+    n_passagens=2
+):
+    """
+    Calcula, para cada vagão:
+    - O maior impacto por passagem
+    - Seleciona as N últimas passagens
+    - Retorna a média dos maiores impactos dessas passagens
+    """
+
+    df = df.copy()
+
+    # Garantir datetime
+    df[col_data] = pd.to_datetime(df[col_data], errors='coerce')
+
+    # Remover linhas inválidas
+    df = df.dropna(subset=[col_vagao, col_data, col_impacto])
+
+    # 1️⃣ Maior impacto por vagão por passagem
+    df_max_por_passagem = (
+        df
+        .groupby([col_vagao, col_data])[col_impacto]
+        .max()
+        .reset_index()
+    )
+
+    # 2️⃣ Ordenar por data (mais recente primeiro)
+    df_max_por_passagem = df_max_por_passagem.sort_values(
+        [col_vagao, col_data],
+        ascending=[True, False]
+    )
+
+    # 3️⃣ Selecionar últimas N passagens
+    df_ultimas = (
+        df_max_por_passagem
+        .groupby(col_vagao)
+        .head(n_passagens)
+    )
+
+    # 4️⃣ Média dos máximos
+    df_resultado = (
+        df_ultimas
+        .groupby(col_vagao)[col_impacto]
+        .mean()
+        .reset_index(name='media_max_ultimas_passagens')
+    )
+
+    return df_resultado
+
+df_WCM_result = calcular_media_maximas_passagens(df_WCM_f)
+
+def plot_distribuicao_impacto(df_WCM_result, passo_faixa=10):
+    # =========================
+    # PREPARAÇÃO
+    # =========================
+    df_plot = df_WCM_result.dropna(subset=['media_max_ultimas_passagens']).copy()
+
+    valor_max = df_plot['media_max_ultimas_passagens'].max()
+    bins = np.arange(40, valor_max + passo_faixa, passo_faixa)
+
+    df_plot['faixa_impacto'] = pd.cut(
+        df_plot['media_max_ultimas_passagens'],
+        bins=bins
+    )
+
+    # =========================
+    # AGREGAÇÃO
+    # =========================
+    contagem = (
+        df_plot.groupby('faixa_impacto')['equnr']
+        .nunique()
+        .reset_index()
+    )
+
+    contagem.columns = ['faixa_impacto', 'quantidade']
+
+    # =========================
+    # CLASSIFICAÇÃO
+    # =========================
+    def classificar_faixa(faixa):
+        valor = faixa.left
+        
+        if valor <= 210:
+            return 'Normal'
+        elif 210 < valor <= 224:
+            return 'Impacto baixo'
+        elif 225 <= valor <= 299:
+            return 'Impacto médio'
+        elif 300 <= valor <= 399:
+            return 'Impacto alto'
+        else:
+            return 'Impacto severo'
+
+    contagem['status'] = contagem['faixa_impacto'].apply(classificar_faixa)
+
+    contagem['faixa_str'] = contagem['faixa_impacto'].astype(str)
+
+    # =========================
+    # GRÁFICO
+    # =========================
+    fig = px.bar(
+        contagem,
+        x='faixa_str',
+        y='quantidade',
+        color='status',
+        text='quantidade',
+        color_discrete_map={
+            'Normal': PRIMARY,
+            'Impacto baixo': SUCCESS,
+            'Impacto médio': WARNING,
+            'Impacto alto': DANGER,
+            'Impacto severo': TEXT
+        },
+        labels={
+            'faixa_str': 'Faixa de Impacto (kN)',
+            'quantidade': 'Quantidade de Vagões'
+        },
+        title='Distribuição de Impacto – Faixas Técnicas'
+    )
+
+    fig.update_traces(textposition='outside')
+
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        template='plotly_white'
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    return contagem
+
 with col2:
-    fig_RC.update_layout(showlegend=False)
-    st.plotly_chart(fig_RC, width='stretch')
-    colunas = ["concatenatedCarID", "altura_cunha_max_media"]
-    limite_RC = 45
-    df_RC_f = df_RC[df_RC["altura_cunha_max_media"] > limite_RC][colunas]
-    st.dataframe(
-        df_RC_f,
-        column_config={
-            "concatenatedCarID": "Vagão",
-            "altura_cunha_max_media": "Altura de cunha",
-            },
-        hide_index=True,
-        )
-    
+    contagem = plot_distribuicao_impacto(df_WCM_result)
 
-# # 4️⃣ Resultado final
-# histograma = df_media[['concatenatedCarID', 'Truque', 'altura_cunha_max_media']]
+qtd_wcm = (
+    df_z369_f[df_z369_f["texto"].str.contains("WCM", na=False)]["ativo"]
+    .nunique()
+)
 
-# # Adicionando modelo do vagão
-# df_dim2 = df_z851[["concatenatedCarID", "MODELO"]].drop_duplicates()
-# histograma2 = histograma.merge(df_dim2, on="concatenatedCarID", how="left")
 
-# # Limites por truque
-# limites = {
-#     "Ride Control": 45,
-#     "Barber": 57,
-#     "Ride Master": 64,
-#     "Motion Control": 57
-# }
-
-# # ---- FILTRO ----
-# truques = sorted(histograma2["Truque"].dropna().unique())
-# truque_sel = st.selectbox("Filtrar tipo de truque:", ["Todos"] + list(truques))
-
-# if truque_sel != "Todos":
-#     df_plot = histograma2[histograma2["Truque"] == truque_sel]
-# else:
-#     df_plot = histograma2.copy()
-
-# # ---- HISTOGRAMA ----
-# fig = px.histogram(
-#     df_plot,
-#     x="altura_cunha_max_media",
-#     nbins=30,
-#     title="Histograma - Altura de Cunha"
-# )
-
-# # ---- LINHA DE LIMITE ----
-# if truque_sel in limites:
-#     fig.add_vline(
-#         x=limites[truque_sel],
-#         line_dash="dash",
-#         annotation_text=f"Limite {limites[truque_sel]}",
-#         annotation_position="top"
-#     )
-
-# st.plotly_chart(fig, width='stretch')
+col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+with col1:
+    st.markdown(f"""
+            <div style="
+                background-color:{CARD_BG};
+                border:1px solid {BORDER};
+                border-radius:10px;
+                padding:14px;
+                text-align:center;
+            ">
+                <div style="color:{MUTED}; font-size:14px;"><b>Notas abertas WCM</b></div>
+                <div style="color:{TEXT}; font-size:28px; font-weight:700;">{qtd_wcm}</div>
+            </div>
+            """, unsafe_allow_html=True)
