@@ -656,7 +656,6 @@ df_trkv_f = df_trkv_f.merge(df_dim, on="concatenatedcarid", how="left")
 # -----------------------------
 df_trkv_f = df_trkv_f[df_trkv_f["timestamp"] >= df_trkv_f["ultima_rr"]]
 
-
 colunas_cunha = [
     "a#l_1","a#l_2","a#r_1","a#r_2",
     "b#l_1","b#l_2","b#r_1","b#r_2"
@@ -722,7 +721,6 @@ def regra_altura(x):
 
     return np.nan
 
-
 alturas = (
     df_long.groupby(["concatenatedcarid", "cunha"])["altura"]
     .apply(regra_altura)
@@ -746,216 +744,10 @@ truque = (
 
 resultado = resultado.merge(truque, on="concatenatedcarid", how="left")
 
-# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-# truques_dim = (
-#     truques_dim
-#     .rename(columns={
-#         'vg_+_serie': 'concatenatedcarid',
-#         'truque': 'truque'
-#     })[['concatenatedcarid', 'truque']]
-# )
-# # Função para tratar outliers
-# def tratar_outliers_trkv(df):
-
-#     """
-#     Remove medições anômalas com base nas 3 últimas medições por key.
-
-#     - Valor é outlier se:
-#         valor > max_3 * 1.30
-#         valor < min_3 * 0.70
-#     """
-#     df = df.fillna(0)                     
-#     df["key"] = df["caridnumber"].astype(int)
-#     df["timestamp"] = pd.to_datetime(
-#         df["timestamp"],  errors="coerce")
-#     df = df.sort_values(["key", "timestamp"])
-
-#     # Cálculo da força máxima entre os 8 sensores
-#     sensores = ["a#l_1", "a#l_2", "a#r_1", "a#r_2",
-#                 "b#l_1", "b#l_2", "b#r_1", "b#r_2"]
-
-#     df["max_valor"] = df[sensores].max(axis=1)
-
-    
-#     df["min_3"] = (
-#         df.groupby("key")["max_valor"]
-#         .rolling(3).min().shift(1)
-#         .reset_index(level=0, drop=True)
-#     )
-
-#     df["max_3"] = (
-#         df.groupby("key")["max_valor"]
-#         .rolling(3).max().shift(1)
-#         .reset_index(level=0, drop=True)
-#     )
-
-#     # Regras ±30%
-#     df["descartar"] = (
-#         (df["max_valor"] > df["max_3"] * (1+cof_Outlier)) |
-#         (df["max_valor"] < df["min_3"] * (1-cof_Outlier)) |
-#        ( df["max_valor"] == 0)
-#     )
-
-#     df["status_out"] = df["descartar"].map(
-#         {True: "descartar", False: "OK"})
-#     return df
-
-# cof_Outlier = 0.2
-# df_TRKV_2 = tratar_outliers_trkv(df_trkv_f) #df_TRKV_2 são todos os dados do truck view com indicação de outliers na coluna 
-# # Juntar dimensão com fatos
-# df_TRKV_2 = df_TRKV_2.merge(truques_dim, on="concatenatedcarid", how="left")
-# # Mapeamento de alarme de cunha - REGRA MURYLO
-# MAP_WEDGE = {
-#     "Ride Control": 45,
-#     "Barber": 57,
-#     "Ride Master": 64,
-#     "Motion Control": 57,
-# }
-
-# df_TRKV_2['alarme'] = (
-#     df_TRKV_2['truque']
-#     .map(MAP_WEDGE)
-#     .fillna("inválido")
-# )
-
-# # Desconsiderar registros de truques que não são Ride Control ou Ride Master
-# df_TRKV_3 = df_TRKV_2[df_TRKV_2["truque"].isin(["Ride Control", "Ride Master"])]
-
-# # Desconsiderar registros com STATUS_out = DESCARTAR (jogar outliers fora)
-# df_TRKV_3 = df_TRKV_3[df_TRKV_3['status_out'] == "OK"]
-
-# # Desconsiderar registros com 'Header_TrainDirection' = N
-# df_TRKV_3 = df_TRKV_3[df_TRKV_3['header_traindirection'] == "S"]
-
-# # Desconsiderar registros com concatenatedCarID = 000000None ou 0000000nan
-# df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedcarid'] != "000000None"]
-# df_TRKV_3 = df_TRKV_3[df_TRKV_3['concatenatedcarid'] != "0000000nan"]
-
-# # Jogar fora colunas desnecessárias
-# cols_drop = [
-#     'carsequencenumber','carorientation','cartype',
-#     'truckfields','truckids','truckvalues','timestr',
-#     'header_trainsequencenumber','data_sincronizacao',
-#     'max_valor','min_3','max_3'
-# ]
-# df_TRKV_3 = df_TRKV_3.drop(columns=cols_drop, errors='ignore')
-
-# # Últimos tratamentos do df_TRKV
-# # -----------------------------
-# df_TRKV_3["concatenatedcarid"] = df_TRKV_3["concatenatedcarid"].astype(str)
-# df_TRKV_3["timestamp"] = pd.to_datetime(df_TRKV_3["timestamp"], errors="coerce")
-# df_TRKV_3["alarme"] = pd.to_numeric(
-#     df_TRKV_3["alarme"],
-#     errors="coerce"
-# ).astype("float64")
-
-# ## Pegar a data da última RR no df_z851 e fazer um merge com o df_TRKV_3
-
-# # Preparar dataframe dimensão (df_z851)
-# df_z851["concatenatedcarid"] = df_z851["equnr"]
-# df_z851["ultima_rr"] = pd.to_datetime(df_z851["ultima_rr"], errors="coerce")
-
-# df_dim = df_z851[["concatenatedcarid", "ultima_rr"]].drop_duplicates()
-
-# # Juntar dimensão com fatos
-# df_TRKV_4 = df_TRKV_3.merge(df_dim, on="concatenatedcarid", how="left")
-
-# # Filtrar somente registros após última RG
-# # -----------------------------
-# df_TRKV_4 = df_TRKV_4[df_TRKV_4["timestamp"] >= df_TRKV_4["ultima_rr"]]
-
-# colunas_cunha = [
-#     "a#l_1", "a#l_2", "a#r_1", "a#r_2",
-#     "b#l_1", "b#l_2", "b#r_1", "a#r_2"
-# ]
-
-# df = df_TRKV_4.copy()
-# df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-# # 1- Ordena e pega só 5 registros mais recentes por vagão
-# df = (
-#     df.sort_values(["concatenatedcarid", "timestamp"], ascending=[True, False])
-#       .groupby("concatenatedcarid")
-#       .head(5)
-# )
-
-# # 2️⃣ Converter cunhas para formato longo (muito mais rápido pra agrupar)
-# df_long = df.melt(
-#     id_vars=["concatenatedcarid", "truque", "timestamp"],
-#     value_vars=colunas_cunha,
-#     var_name="cunha",
-#     value_name="altura"
-# )
-
-# limites = {
-#     "Ride Master": 70,
-#     "Ride Control": 52
-# }
-
-# df_long = df_long[
-#     ~df_long.apply(
-#         lambda x: x["truque"] in limites and x["altura"] > limites[x["truque"]],
-#         axis=1
-#     )
-# ]
-
-# # 3️⃣ Ignorar zeros
-# df_long["altura"] = df_long["altura"].replace(0, np.nan)
-# df_long = df_long.dropna(subset=["altura"])
-
-
-# # 4️⃣ Função vetorizada por vagão + cunha
-# def regra_altura(x):
-#     n = len(x)
-
-#     if n >= 5:
-#         vals = np.sort(x)[1:-1]
-#         return vals.mean()
-
-#     elif n == 4:
-#         vals = np.sort(x)[1:-1]
-#         return vals.mean()
-
-#     elif n == 3:
-#         return np.sort(x)[1]
-
-#     elif n == 2:
-#         return x.mean()
-
-#     elif n == 1:
-#         return x.iloc[0]
-
-#     return np.nan
-
-
-# alturas = (
-#     df_long.groupby(["concatenatedcarid", "cunha"])["altura"]
-#     .apply(regra_altura)
-#     .reset_index()
-# )
-
-# # 5️⃣ Pegar maior altura entre as cunhas de cada vagão
-# resultado = (
-#     alturas.groupby("concatenatedcarid")["altura"]
-#     .max()
-#     .reset_index(name="altura_cunha_max_media")
-# )
-
-# # 6️⃣ Recuperar tipo de truque
-# truque = (
-#     df.drop_duplicates("concatenatedcarid")
-#       [["concatenatedcarid", "truque"]]
-# )
-
-# resultado = resultado.merge(truque, on="concatenatedcarid", how="left")
-
 dfs_por_truque = {
     truque: grupo.reset_index(drop=True)
     for truque, grupo in resultado.groupby('truque')
 }
-
 
 # Gerando um dataframe para cada tipo de truque
 df_RC = dfs_por_truque['Ride Control']
