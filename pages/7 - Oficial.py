@@ -486,7 +486,12 @@ st.divider()
 # =============================================================================================
 # HISTOGRAMA DE CUNHAS
 # =============================================================================================
+# 1. Filtro de direção do trem 
+df_trkv_f = df_trkv_f[
+    df_trkv_f['header_traindirection'] == "S"
+]
 
+# 2. Merge com tipo de truque e filtro
 truques_dim = (
     truques_dim
     .rename(columns={
@@ -494,26 +499,12 @@ truques_dim = (
         'truque': 'truque'
     })[['concatenatedcarid', 'truque']]
 )
-
-# =====================================================
-# 1. Juntar dimensão com fatos e filtrar
-# =====================================================
 df_trkv_f = df_trkv_f.merge(truques_dim, on="concatenatedcarid", how="left")
-
-# Apenas tipos desejados
 df_trkv_f = df_trkv_f[
     df_trkv_f["truque"].isin(["Ride Control", "Ride Master"])
 ]
 
-# Direção do trem
-df_trkv_f = df_trkv_f[
-    df_trkv_f['header_traindirection'] == "S"
-]
-
-# =====================================================
-# 2. Remover valores fisicamente inválidos por sensor
-# (substitui por NaN, não remove a linha)
-# =====================================================
+# 3. Remover valores fisicamente inválidos por sensor
 sensores = [
     "a#l_1","a#l_2","a#r_1","a#r_2",
     "b#l_1","b#l_2","b#r_1","b#r_2"
@@ -533,10 +524,7 @@ df_trkv_f.loc[mask_rm, sensores] = df_trkv_f.loc[mask_rm, sensores].mask(
     (df_trkv_f.loc[mask_rm, sensores] > 70)
 )
 
-
-# =====================================================
-# 3. Função para tratar outliers
-# =====================================================
+# 4. Função para tratar outliers
 def tratar_outliers_trkv(df):
 
     """
@@ -586,14 +574,11 @@ def tratar_outliers_trkv(df):
 
     return df
 
-
-# =====================================================
-# 4. Aplicar tratamento de outlier
-# =====================================================
+# 5. Aplicar tratamento de outlier
 cof_Outlier = 0.2
 df_trkv_f = tratar_outliers_trkv(df_trkv_f)
 
-# Remover outliers
+# 6. Remover outliers
 df_trkv_f = df_trkv_f[
     df_trkv_f['status_out'] == "OK"
 ]
@@ -601,10 +586,16 @@ df_trkv_f = df_trkv_f[
 # Remove as linhas onde TODAS as colunas da lista 'sensores' são NaN
 df_trkv_f = df_trkv_f.dropna(subset=sensores, how='all')
 
+# 7. Limpeza inicial de colunas desnecessárias
+cols_drop = [
+    'carsequencenumber','carorientation','cartype',
+    'truckfields','truckids','truckvalues','timestr',
+    'header_trainsequencenumber','data_sincronizacao'
+]
+df_trkv_f = df_trkv_f.drop(columns=cols_drop, errors='ignore')
 
-# =====================================================
-# 5. Mapeamento de alarme de cunha
-# =====================================================
+
+# 8. Mapeamento de alarme de cunha
 MAP_WEDGE = {
     "Ride Control": 45,
     "Barber": 57,
@@ -618,21 +609,7 @@ df_trkv_f['alarme'] = (
     .fillna("inválido")
 )
 
-# =====================================================
-# 7. Limpeza de colunas
-# =====================================================
-cols_drop = [
-    'carsequencenumber','carorientation','cartype',
-    'truckfields','truckids','truckvalues','timestr',
-    'header_trainsequencenumber','data_sincronizacao',
-    'max_valor','min_3','max_3'
-]
-
-df_trkv_f = df_trkv_f.drop(columns=cols_drop, errors='ignore')
-
-# =====================================================
-# 8. Ajustes finais
-# =====================================================
+# 9. Ajustes finais
 df_trkv_f["concatenatedcarid"] = df_trkv_f["concatenatedcarid"].astype(str)
 df_trkv_f["timestamp"] = pd.to_datetime(df_trkv_f["timestamp"], errors="coerce")
 
@@ -641,19 +618,12 @@ df_trkv_f["alarme"] = pd.to_numeric(
     errors="coerce"
 ).astype("float64")
 
-## Pegar a data da última RR no df_z851 e fazer um merge com o df_TRKV
 
-# Preparar dataframe dimensão (df_z851)
+# 10. Filtro de dados anteriores à ultima RG
 df_z851["concatenatedcarid"] = df_z851["equnr"]
 df_z851["ultima_rr"] = pd.to_datetime(df_z851["ultima_rr"], errors="coerce")
 df_dim = df_z851[["concatenatedcarid", "ultima_rr"]].drop_duplicates()
-
-# Juntar dimensão com fatos
 df_trkv_f = df_trkv_f.merge(df_dim, on="concatenatedcarid", how="left")
-
-# -----------------------------
-# 4) Filtrar somente registros após última RG
-# -----------------------------
 df_trkv_f = df_trkv_f[df_trkv_f["timestamp"] >= df_trkv_f["ultima_rr"]]
 
 colunas_cunha = [
