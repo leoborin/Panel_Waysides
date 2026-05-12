@@ -6,5 +6,5 @@ matplotlib
 plotly
 streamlit-browser-engine==0.0.3
 openpyxl
-sklearn
+scikit-learn
 
