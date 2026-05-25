@@ -282,13 +282,13 @@ def busca_dados(vagao):
     def busca_TBOGI(vagao):
         try:
             vagao = int(vagao)
-            client = MongoClient(MONGO_URI)
+            client = MongoClient(MONGO_URI_PRD)
 
             # -----------------------------------------
             # 1) Filtro seguro (busca exata, não parcial)
             # -----------------------------------------
             filter = {'car_num': re.compile(f"{vagao}")}
-            cursor = client[DB_NAME]["tbogi_treated"].find(filter)
+            cursor = client['DB_NAME']["tbogi_treated"].find(filter)
 
             # -----------------------------------------
             # 2) Converter cursor → DataFrame

@@ -92,7 +92,7 @@ def busca_dados(vagao):
             data_mais_recente = df_tbogi['timestamp_received'].max()
             print(data_mais_recente)
             vagao = int(vagao)
-            client = MongoClient(MONGO_URI)
+            client = MongoClient(MONGO_URI_PRD)
 
             # -------------------------
             # 1) Filtro por car_num
@@ -441,7 +441,7 @@ def exibir_data_mais_recente():
     dt_z369 = pd.to_datetime(df_z369['dt_last_udate_trated'], errors='coerce')
     dt_z851 = pd.to_datetime(df_z851['Atualizacao'], errors='coerce')
     dt_z1568 = pd.to_datetime(df_z1568['dt_fim_trated'], errors='coerce')
-    dt_tbogi = df_tbogi['timestamp_received']
+    dt_tbogi = pd.to_datetime(df_tbogi['timestamp_received'], errors='coerce')
 
     # Datas mais recentes
     data_mais_recente_164 = dt_164.max()
@@ -877,7 +877,7 @@ try:
     exibir_data_mais_recente()
     st.write("---")
 except Exception as e:
-    st.error(f"Erro ao processar dados: {e}")
+    st.error(f"Erro ao processar dados Resumo Vagões: {e}")
 
 
 if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
@@ -1047,5 +1047,5 @@ try:
 
     st.write(f"Total de registros: **{df_filtrado.shape[0]}**")
 except Exception as e:
-    st.error(f"Erro ao processar os dados: {e}")
+    st.error(f"Erro ao processar os dados Filtro – EQUNR: {e}")
     st.write(f"Atualize os dados.")

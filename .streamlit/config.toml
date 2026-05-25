@@ -8,4 +8,8 @@ font="sans serif"             # "sans serif", "serif", "monospace"
 
 [browser]
 gatherUsageStats = false
- 
+
+[server]
+headless = true
+port = 8501
+enableCORS = false
