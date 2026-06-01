@@ -13,6 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 import json
+
 warnings.filterwarnings("ignore")
 
 
@@ -29,18 +30,8 @@ MONGO_URI = st.secrets.database_dev.MONGO_URI
 DB_NAME = st.secrets.database_dev.DB_NAME
 MONGO_URI_PRD = st.secrets.database_prod.MONGO_URI_PRD
 DB_NAME_PRD = st.secrets.database_prod.DB_NAME_PRD
+DB_NAME_PRD_SUP = st.secrets.database_prod.DB_NAME_PRD_SUP
 cof_Outlier = 0.2
-
-# logo = Image.open("assets/logo.png")
-# st.logo(logo, size='large')
-# col_logo, col_titulo = st.columns([1, 7])
-# with col_logo:
-#     st.image("assets/vg666.png", width=100)
-# with col_titulo:
-#     st.title("Consulta Completa Vagões v0 - Visão Micro")
-
-# st.set_page_config(layout="wide")
-# # st.write("POC Testes")
 
 #--------------------------------------------------------------------------------
 ## Configuração da página e cabeçalho
@@ -288,7 +279,7 @@ def busca_dados(vagao):
             # 1) Filtro seguro (busca exata, não parcial)
             # -----------------------------------------
             filter = {'car_num': re.compile(f"{vagao}")}
-            cursor = client['DB_NAME']["tbogi_treated"].find(filter)
+            cursor = client[DB_NAME_PRD_SUP]["tbogi_treated"].find(filter)
 
             # -----------------------------------------
             # 2) Converter cursor → DataFrame
@@ -499,8 +490,7 @@ def busca_dados(vagao):
 
     def busca_SAT_TAREFAS_full(vagao):
         try:
-            from pymongo import MongoClient
-            import pandas as pd
+           
 
             # Garantir que o vagao é string (Mongo armazena como string)
             vagao = str(vagao)
@@ -581,7 +571,7 @@ def busca_dados(vagao):
 
     print("df_WCM:", len(df_WCM))
     print("df_z369:", len(df_z369))
-    # print("df_trkv:", len(df_trkv))
+    print("df_trkv:", len(df_trkv))
     print("df_z851:", len(df_z851))
     print("df_z1568:", len(df_z1568))
     print("df_164:", len(df_164))
@@ -1742,6 +1732,7 @@ if st.button("Executar função"):
                 # TBOGI
                 # =========================
                 try:
+                    print(df_TBOGI_trated.head(20))
                     df_TBOGI_trated["Alarme"] = 15
                     df_TBOGI_trated.rename(
                         columns={"timestamp_received": "Data"}, inplace=True)

@@ -47,7 +47,7 @@ dfs = {}  # dicionário para armazenar cada dataframe
 for arquivo in arquivos_parquet:
     nome = os.path.basename(arquivo).replace(".parquet", "")
     dfs[nome] = pd.read_parquet(arquivo)
-    print(f"Carregado: {nome}  →  {dfs[nome].shape}")
+    #print(f"Carregado: {nome}  →  {dfs[nome].shape}")
 
 # DataFrames individuais
 df_164 = dfs["df_164"]
@@ -86,11 +86,11 @@ def busca_dados(vagao):
         try:
 
             # Conexão com o MongoDB
-            print("Buscando TBOGI...")
+            #print("Buscando TBOGI...")
             df_tbogi = pd.read_parquet("./temp/df_tbogi.parquet")
 
             data_mais_recente = df_tbogi['timestamp_received'].max()
-            print(data_mais_recente)
+            #print(data_mais_recente)
             vagao = int(vagao)
             client = MongoClient(MONGO_URI_PRD)
 
@@ -111,7 +111,7 @@ def busca_dados(vagao):
             df = pd.DataFrame(list(cursor))
 
             if df.empty:
-                print(f"TBOGI: Nenhum registro encontrado para {vagao}")
+                #print(f"TBOGI: Nenhum registro encontrado para {vagao}")
                 return pd.DataFrame()
 
             # -------------------------
@@ -120,7 +120,7 @@ def busca_dados(vagao):
             if "tp" in df.columns:
                 df["valor_mod_pd"] = df["tp"].abs()
             else:
-                print("TBOGI: coluna 'tp' não encontrada")
+                #print("TBOGI: coluna 'tp' não encontrada")
                 df["valor_mod_pd"] = np.nan
 
             # -------------------------
@@ -144,14 +144,14 @@ def busca_dados(vagao):
                 .agg(max_valor_mod_pd=("valor_mod_pd", "max"))
                 .sort_values(["timestamp_received"])
             )
-            print(
-                f"TBOGI: Consultado com sucesso para {vagao}, registros: {len(df_resumo)}")
-            print(df_resumo.head())
+            #print(
+               # f"TBOGI: Consultado com sucesso para {vagao}, registros: {len(df_resumo)}")
+            #print(df_resumo.head())
 
             return df_resumo
 
         except Exception as e:
-            print(f"Erro ao consultar TBOGI: {e}")
+            #print(f"Erro ao consultar TBOGI: {e}")
             return pd.DataFrame()
 
     def busca_z1568(vagao):
@@ -202,7 +202,7 @@ def busca_dados(vagao):
     def busca_wcm(vagao):
         vagao = int(vagao)
         from datetime import datetime, timedelta
-        print("Buscando WCM...")
+        #print("Buscando WCM...")
         df_WCM = pd.read_parquet("./temp/df_WCM.parquet")
 
         # df_WCM['json_trem_TrainTime'] = df_WCM.to_datetime(df['json_trem_TrainTime'], errors='coerce')
@@ -212,7 +212,7 @@ def busca_dados(vagao):
             df_WCM['json_trem_TrainTime'],  errors='coerce')
         data_mais_recente = df_WCM['json_trem_TrainTime_dt'].max()
 
-        print(data_mais_recente)
+        #print(data_mais_recente)
 
         # Conexão com o MongoDB
         client = MongoClient(
@@ -292,11 +292,11 @@ def busca_dados(vagao):
 
     def busca_TRKV(vagao):
         # Conexão com o MongoDB
-        print("Buscando TRKV...")
+        #print("Buscando TRKV...")
         df_trkv = pd.read_parquet("./temp/df_trkv.parquet")
 
         data_mais_recente = df_trkv['data_sincronizacao'].max()
-        print(data_mais_recente)
+        #print(data_mais_recente)
 
         vagao = int(vagao)
         client = MongoClient(MONGO_URI_PRD)
@@ -377,7 +377,7 @@ def busca_dados(vagao):
         inicio = time.time()
         resultado = func(*args, **kwargs)
         fim = time.time()
-        print(f"{func.__name__} executou em {fim - inicio:.2f} segundos")
+        #print(f"{func.__name__} executou em {fim - inicio:.2f} segundos")
         return resultado
 
     def exec_parallel(vagao):
@@ -404,7 +404,7 @@ def busca_dados(vagao):
                 try:
                     resultados[nome] = future.result()
                 except Exception as e:
-                    print(f"Erro na função {nome}: {e}")
+                    #print(f"Erro na função {nome}: {e}")
                     resultados[nome] = None
 
         return resultados
@@ -420,13 +420,13 @@ def busca_dados(vagao):
     df_tbogi = result["busca_TBOGI"]
     #
 
-    print(len(df_WCM))
-    print(len(df_z369))
-    print(len(df_trkv))
-    print(len(df_z851))
-    print(len(df_z1568))
-    print(len(df_164))
-    print(len(df_tbogi))
+    #print(len(df_WCM))
+    #print(len(df_z369))
+    #print(len(df_trkv))
+    #print(len(df_z851))
+    #print(len(df_z1568))
+    #print(len(df_164))
+    #print(len(df_tbogi))
 
     # st.success("Função executada com sucesso!")
 
@@ -452,12 +452,12 @@ def exibir_data_mais_recente():
     data_mais_recente_z1568 = dt_z1568.max()
     data_mais_recente_tbogi = dt_tbogi.max()
 
-    print("164:", data_mais_recente_164)
-    print("TRKV:", data_mais_recente_trkv)
-    print("WCM:", data_mais_recente_WCM)
-    print("Z369:", data_mais_recente_z369)
-    print("Z851:", data_mais_recente_z851)
-    print("Z1568:", data_mais_recente_z1568)
+    #print("164:", data_mais_recente_164)
+    #print("TRKV:", data_mais_recente_trkv)
+    #print("WCM:", data_mais_recente_WCM)
+    #print("Z369:", data_mais_recente_z369)
+    #print("Z851:", data_mais_recente_z851)
+    #print("Z1568:", data_mais_recente_z1568)
     st.markdown("### Datas Mais Recentes nas Bases")
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
@@ -488,9 +488,9 @@ def exibir_data_mais_recente():
 
 
 def concatenar_dados_trkv_z851(df_z851, df_trkv):
-    print("Iniciando tratamento TRKV...")
-    print(df_trkv.columns)
-    print(df_trkv)
+    #print("Iniciando tratamento TRKV...")
+    #print(df_trkv.columns)
+    #print(df_trkv)
     #st.dataframe(df_z851)
     df_trkv["max_valor"] = df_trkv[["A#L_1", "A#L_2", "A#R_1",
                                     "A#R_2", "B#L_1", "B#L_2", "B#R_1", "B#R_2"]].max(axis=1)
@@ -777,8 +777,8 @@ def concatenar_dados_new2_z369(df_new2, df_z369):
     contagem_pivot = contagem_pivot.rename(columns={
         k: v for k, v in mapa_colunas.items() if k in contagem_pivot.columns
     }).reset_index()
-    print(contagem_pivot.columns)
-    print(df_z369.columns)
+    #print(contagem_pivot.columns)
+    #print(df_z369.columns)
     # Preparar chave 'key' no df_z369
     contagem_pivot['key'] = contagem_pivot['ATIVO'].str.replace(
         r"[^0-9]", "", regex=True).astype(int)
@@ -879,32 +879,6 @@ try:
 except Exception as e:
     st.error(f"Erro ao processar dados Resumo Vagões: {e}")
 
-
-if st.button("🔄 Atualizar dados (pode demorar um pouco)"):
-    with st.spinner("Atualizado bases ... Aguarde..."):
-        df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_tbogi = busca_dados(
-            0)
-        print(df_WCM.shape, df_z369.shape, df_trkv.shape,
-              df_z851.shape, df_z1568.shape, df_164.shape, df_tbogi.shape)
-        print("Iniciando salvamento...")
-        dfs = [df_WCM, df_z369, df_trkv, df_z851, df_z1568, df_164, df_tbogi]
-
-        paths = [
-            "./temp/df_WCM.parquet",
-            "./temp/df_z369.parquet",
-            "./temp/df_trkv.parquet",
-            "./temp/df_z851.parquet",
-            "./temp/df_z1568.parquet",
-            "./temp/df_164.parquet",
-            "./temp/df_tbogi.parquet"
-        ]
-
-        salvar_tudo_threadpool(dfs, paths)
-
-    st.success("Arquivos salvos com sucesso! ✅")
-    st.rerun()
-
-
 try:
     # =============================
     # Filtro – EQUNR
@@ -974,7 +948,7 @@ try:
 
     def create_EQUNR_link(equnr):
         """Cria link com o valor da EQUNR"""
-        return f"/Consulta_Master?eqnr={equnr}"
+        return f"/Consulta_Vagão?eqnr={equnr}"
 
     # Cria DataFrame com link
     df_filtrado_com_link = df_filtrado.copy()
