@@ -31,7 +31,10 @@ df_z369 = dfs["df_z369"]
 df_z851 = dfs["df_z851"]
 df_z1568 = dfs["df_z1568"]
 df_tbogi = dfs["df_tbogi"]
-
+df_censo = dfs["df_censo"]
+df_sat_tarefas = dfs["df_sat_tarefas"]
+df_versonota = dfs["df_versonota"]
+df_zCadVagoes_resumos = dfs["df_zCadVagoes_resumos"]
 
 # -----------------------------
 # Configuração da página
